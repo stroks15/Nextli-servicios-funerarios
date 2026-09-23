@@ -16,7 +16,8 @@ const SIZE_LABEL={chico:'Chico (0–10 kg)',mediano:'Mediano (11–25 kg)',grand
 const COM_PRICE={chico:800,mediano:850,grande:1100};
 const breedSize={Chihuahueño:'chico',Poodle:'chico',Pug:'chico',Schnauzer:'chico',Yorkshire:'chico',Beagle:'chico',Bulldog:'mediano',Cocker:'mediano','Golden Retriever':'grande',Labrador:'grande','Pastor Alemán':'grande','Gran Danés':'xl',Husky:'grande'};
 const catSize={Siamés:'chico',Persa:'chico','Maine Coon':'mediano',Ragdoll:'chico',Bengalí:'chico','Británico de pelo corto':'chico'};
-let workerMode=false, triggerA=0, triggerB=0, triggerTimer=null;
+let workerMode=false, logoTaps=0, workerUnlockArmed=false, workerUnlockTimer=null;
+const WORKER_UNLOCK_WINDOW=3000;
 let state={service:null,species:'',otherSpecies:'',breed:'',weight:'',urnId:null,plus:false,huella:false,cert:false,color:'',frame:'',paymentStatus:'No pagado',paymentOther:''};
 const $=id=>document.getElementById(id), val=id=>(($(id)?.value||'').trim()||'—');
 function localizeImg(img){img.onerror=()=>{if(!img.dataset.fallback){img.dataset.fallback='1';img.src=IMAGE_BASE+img.src.split('/').pop();}else img.style.opacity='.18';};}
@@ -51,9 +52,36 @@ function buildMessage(audience){const urn=URNS.find(u=>u.id===state.urnId);let m
 function renderSummary(){const urn=URNS.find(u=>u.id===state.urnId);$('summaryBox').innerHTML=`<div class="summary-box"><h4>Resumen de tu solicitud</h4>${line('Servicio',state.service==='comunitaria'?'Cremación Comunitaria':'Cremación Individual')}${line('Mascota',val('petName'))}${line('Especie / raza',speciesLabel()+(state.breed?' / '+state.breed:''))}${line('Tamaño / peso',SIZE_LABEL[state.weight]||'—')}${line('Urna',urn?.name||'—')}${extras().map((x,i)=>line(i?'Adicional':'Adicional',x)).join('')}${line('Propietario',val('ownerName'))}${line('Teléfono',val('ownerPhone'))}${line('Dirección',val('ownerAddress'))}${workerMode?line('Pago',paymentLabel()):''}<div class="summary-total"><span>Total estimado</span><span>$${total().toLocaleString()} MXN</span></div></div>`;$('sendWa').href='https://wa.me/'+WA_NUMBER+'?text='+encodeURIComponent(buildMessage('cliente'));}
 function line(a,b){return `<div class="summary-line"><span>${a}</span><b>${b}</b></div>`;}
 function requiredOk(){const ids=['petName','petAge','petDate','ownerName','ownerPhone','ownerAddress'];return state.urnId&&state.species&&state.weight&&ids.every(id=>val(id)!=='—')&&(state.species!=='otro'||state.otherSpecies);}
-function activateWorker(){workerMode=true;document.body.classList.add('worker-mode');$('workerButton').textContent='Personaliza tu despedida';$('workerPaymentWrap').style.display='block';}
-$('nextliTrigger').onclick=()=>{clearTimeout(triggerTimer);triggerA++;if(triggerA===2){triggerA=0;triggerB=1;triggerTimer=setTimeout(()=>{triggerB=0},3000);}};
-$('workerButton').onclick=()=>{if(triggerB===1){activateWorker();triggerB=0;clearTimeout(triggerTimer);}};
+function activateWorker(){
+  workerMode=true;
+  document.body.classList.add('worker-mode');
+  $('workerButton').textContent='Modo trabajador NEXTLI';
+  $('workerPaymentWrap').style.display='block';
+  workerUnlockArmed=false;
+  logoTaps=0;
+  clearTimeout(workerUnlockTimer);
+}
+$('nextliTrigger').onclick=()=>{
+  if(workerMode)return;
+  logoTaps++;
+  if(logoTaps===1){
+    clearTimeout(workerUnlockTimer);
+    workerUnlockTimer=setTimeout(()=>{logoTaps=0;workerUnlockArmed=false;},WORKER_UNLOCK_WINDOW);
+  }
+  if(logoTaps===2){
+    workerUnlockArmed=true;
+    clearTimeout(workerUnlockTimer);
+    workerUnlockTimer=setTimeout(()=>{logoTaps=0;workerUnlockArmed=false;},WORKER_UNLOCK_WINDOW);
+  }
+};
+$('workerButton').onclick=()=>{
+  if(workerMode)return;
+  if(workerUnlockArmed){
+    activateWorker();
+  }else{
+    logoTaps=0;
+  }
+};
 $('workerButton').addEventListener('dblclick',e=>e.preventDefault());
 document.querySelectorAll('[data-service]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-service]').forEach(x=>x.classList.remove('selected'));b.classList.add('selected');state.service=b.dataset.service;goTo(2);});
 document.querySelectorAll('[data-wa-text]').forEach(b=>b.onclick=()=>window.open('https://wa.me/'+WA_NUMBER+'?text='+encodeURIComponent(b.dataset.waText),'_blank'));
