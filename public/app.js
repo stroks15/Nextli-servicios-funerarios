@@ -128,6 +128,14 @@ function closeCertificatePreview(){
   if(!overlay)return;
   overlay.classList.remove('open');
   overlay.setAttribute('aria-hidden','true');
+  const shell=$('certificateShell');
+  if(shell){
+    document.body.appendChild(shell);
+    shell.style.position='fixed';
+    shell.style.left='-100000px';
+    shell.style.top='0';
+    shell.style.visibility='hidden';
+  }
   $('certificatePreviewMount').innerHTML='';
   certificateReady=false;
 }
