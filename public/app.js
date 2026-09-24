@@ -32,13 +32,29 @@ function renderUrns(size){
     const available=!size||!!u.prices[size],price=size&&u.prices[size];
     const b=document.createElement('button');b.type='button';
     b.className='urn-card '+(state.urnId===u.id?'selected ':'')+(size&&!available?'unavailable':'');
-    b.innerHTML=`<img src="${u.img}" alt="${u.name}"><div class="u-body"><h5>${u.name}</h5><div class="u-price">${size?(available?'
-function autoWeight(){const s=state.species==='perro'?breedSize[state.breed]:state.species==='gato'?catSize[state.breed]:null;if(s){state.weight=s;$('weightRange').value=s;$('manualWeightAction').style.display='block';}
-else{$('manualWeightAction').style.display='none';}
-const selected=URNS.find(u=>u.id===state.urnId);
-if(!selected || !state.weight || !selected.prices[state.weight]) state.urnId=null;
-renderUrns(state.weight||null);
-syncUrnControls();}
+    b.innerHTML=`<img src="${u.img}" alt="${u.name}"><div class="u-body"><h5>${u.name}</h5><div class="u-price">${size?(available?'$'+price.toLocaleString()+' MXN':'No disponible en este tamaño'):'Selecciona un tamaño'}</div></div>`;
+    localizeImg(b.querySelector('img'));
+    if(available){
+      b.onclick=()=>{
+        state.urnId=u.id;
+        if(size)state.weight=size;
+        renderUrns(state.weight||size||null);
+        syncUrnControls();
+      };
+    }
+    grid.appendChild(b);
+  });
+  syncUrnControls();
+}
+function autoWeight(){
+  const s=state.species==='perro'?breedSize[state.breed]:state.species==='gato'?catSize[state.breed]:null;
+  if(s){state.weight=s;$('weightRange').value=s;$('manualWeightAction').style.display='block';}
+  else{$('manualWeightAction').style.display='none';}
+  const selected=URNS.find(u=>u.id===state.urnId);
+  if(!selected || !state.weight || !selected.prices[state.weight]) state.urnId=null;
+  renderUrns(state.weight||null);
+  syncUrnControls();
+}
 function calcBase(){if(state.service==='comunitaria')return COM_PRICE[state.weight]||0;const u=URNS.find(x=>x.id===state.urnId);return u?.prices[state.weight]||0;}
 function total(){return calcBase()+(state.plus?500:0)+(state.huella?200:0)+(state.cert?50:0);}
 function updateTotal(){$('runningTotal3').textContent='Total: $'+total().toLocaleString()+' MXN';}
@@ -121,7 +137,6 @@ $('useMyLocationBtn').onclick=()=>{const status=$('geoStatus');if(!navigator.geo
 $('sendGroupWa').onclick=()=>window.open(NEXTLI_GROUP,'_blank');
 $('sendClientWa').onclick=()=>{window.open('https://wa.me/'+val('ownerPhone').replace(/\D/g,'')+'?text='+encodeURIComponent(buildMessage('cliente')),'_blank');generateCertificate();};
 $('downloadCertificate').onclick=generateCertificate;
-
 let certificateReady=false;
 function closeCertificatePreview(){
   const overlay=$('certificatePreview');
@@ -142,7 +157,10 @@ function closeCertificatePreview(){
 async function waitForCertificateRender(el){
   if(document.fonts?.ready) await document.fonts.ready;
   const imgs=[...el.querySelectorAll('img')];
-  await Promise.all(imgs.map(img=>img.complete?Promise.resolve():new Promise(resolve=>{img.addEventListener('load',resolve,{once:true});img.addEventListener('error',resolve,{once:true});})));
+  await Promise.all(imgs.map(img=>img.complete?Promise.resolve():new Promise(resolve=>{
+    img.addEventListener('load',resolve,{once:true});
+    img.addEventListener('error',resolve,{once:true});
+  })));
   await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
 }
 async function generateCertificate(){
@@ -157,16 +175,11 @@ async function generateCertificate(){
   const map={certPet:'petName',certOwner:'ownerName',certSpecies:null,certAge:'petAge',certDate:'petDate',certPhone:'ownerPhone',certAddress:'ownerAddress'};
   Object.entries(map).forEach(([a,b])=>{if(b)$(''+a).textContent=val(b)});
   $('certSpecies').textContent=speciesLabel()+(state.breed?' / '+state.breed:'');
-  const el=$('certificateShell');
-  const mount=$('certificatePreviewMount');
-  const overlay=$('certificatePreview');
+  const el=$('certificateShell'),mount=$('certificatePreviewMount'),overlay=$('certificatePreview');
   if(!el||!mount||!overlay)return;
   mount.innerHTML='';
   mount.appendChild(el);
-  el.style.left='auto';
-  el.style.top='auto';
-  el.style.position='relative';
-  el.style.visibility='visible';
+  el.style.position='relative';el.style.left='auto';el.style.top='auto';el.style.visibility='visible';
   await waitForCertificateRender(el);
   certificateReady=true;
   overlay.classList.add('open');
@@ -179,109 +192,18 @@ async function downloadCertificatePdf(){
   }
   const el=$('certificateShell');
   await waitForCertificateRender(el);
-  const filename=`Certificado-${safe(val('petName'))}-${safe(val('ownerName'))}.pdf`;
   try{
     await html2pdf().set({
       margin:0,
-      filename,
+      filename:`Certificado-${safe(val('petName'))}-${safe(val('ownerName'))}.pdf`,
       image:{type:'jpeg',quality:.98},
       html2canvas:{scale:2,useCORS:true,allowTaint:false,backgroundColor:'#fbf7ee',logging:false},
       jsPDF:{unit:'pt',format:'letter',orientation:'portrait'}
     }).from(el).save();
-  }finally{
-    closeCertificatePreview();
-  }
+  }finally{closeCertificatePreview();}
 }
 $('confirmCertificateDownload').onclick=downloadCertificatePdf;
 $('closeCertificatePreview').onclick=closeCertificatePreview;
 $('cancelCertificatePreview').onclick=closeCertificatePreview;
 function safe(s){return String(s).replace(/[\/:*?"<>|]+/g,'-').replace(/\s+/g,'-').replace(/^-|-$/g,'')||'Cremacion-Nextli';}
-renderUrns(null);syncUrnControls();updateTotal();+price.toLocaleString()+' MXN':'No disponible en este tamaño'):'Selecciona un tamaño'}</div></div>`;
-    localizeImg(b.querySelector('img'));
-    if(available){
-      b.onclick=()=>{
-        state.urnId=u.id;
-        if(size)state.weight=size;
-        renderUrns(state.weight||size||null);
-        syncUrnControls();
-      };
-    }
-    grid.appendChild(b);
-  });
-  syncUrnControls();
-}
-function autoWeight(){const s=state.species==='perro'?breedSize[state.breed]:state.species==='gato'?catSize[state.breed]:null;if(s){state.weight=s;$('weightRange').value=s;$('manualWeightAction').style.display='block';renderUrns(s);}else{renderUrns(state.weight||null);$('manualWeightAction').style.display='none';}}
-function calcBase(){if(state.service==='comunitaria')return COM_PRICE[state.weight]||0;const u=URNS.find(x=>x.id===state.urnId);return u?.prices[state.weight]||0;}
-function total(){return calcBase()+(state.plus?500:0)+(state.huella?200:0)+(state.cert?50:0);}
-function updateTotal(){$('runningTotal3').textContent='Total: $'+total().toLocaleString()+' MXN';}
-function extras(){return [state.plus?'Paquete Plus — Homenaje completo (+$500 MXN)':null,state.huella?'Huella con pelo de mascota (+$200 MXN)':null,state.cert?'Certificado físico adicional (+$50 MXN)':null,state.frame?`Marco: ${state.frame}`:null,state.color?`Vinilo: ${state.color}`:null].filter(Boolean);}
-function speciesLabel(){return state.species==='otro'?(state.otherSpecies||'Otro'):state.species||'—';}
-function paymentLabel(){return state.paymentStatus==='Otro'?`Otro: $${Number(state.paymentOther||0).toLocaleString()} MXN`:state.paymentStatus;}
-function buildMessage(audience){const urn=URNS.find(u=>u.id===state.urnId);let m=`*LEVANTAMIENTO DE ORDEN — NEXTLI*
-------------------------------
-*Servicio:* ${state.service==='comunitaria'?'Cremación Comunitaria':'Cremación Individual'}
-*Mascota:* ${val('petName')}
-*Especie / raza:* ${speciesLabel()}${state.breed?' / '+state.breed:''}
-*Edad:* ${val('petAge')}
-*Urna:* ${urn?.name||'—'}
-*Tamaño / peso:* ${SIZE_LABEL[state.weight]||'—'}
-*Adicionales:* ${extras().join(', ')||'Ninguno'}
-*Total estimado:* $${total().toLocaleString()} MXN
-
-*DATOS DEL CLIENTE*
-*Propietario:* ${val('ownerName')}
-*Teléfono:* ${val('ownerPhone')}
-*Dirección:* ${val('ownerAddress')}
-*Fecha de defunción:* ${val('petDate')}
-*Frase:* ${val('farewellPhrase')}`;if(workerMode)m+=`\n\n*PAGO:* ${paymentLabel()}`;if(audience==='cliente')m='*NOTA DE TU SOLICITUD NEXTLI*\n\n'+m+'\n\nGracias por confiar en NEXTLI.';return m;}
-function renderSummary(){const urn=URNS.find(u=>u.id===state.urnId);$('summaryBox').innerHTML=`<div class="summary-box"><h4>Resumen de tu solicitud</h4>${line('Servicio',state.service==='comunitaria'?'Cremación Comunitaria':'Cremación Individual')}${line('Mascota',val('petName'))}${line('Especie / raza',speciesLabel()+(state.breed?' / '+state.breed:''))}${line('Tamaño / peso',SIZE_LABEL[state.weight]||'—')}${line('Urna',urn?.name||'—')}${extras().map((x,i)=>line(i?'Adicional':'Adicional',x)).join('')}${line('Propietario',val('ownerName'))}${line('Teléfono',val('ownerPhone'))}${line('Dirección',val('ownerAddress'))}${workerMode?line('Pago',paymentLabel()):''}<div class="summary-total"><span>Total estimado</span><span>$${total().toLocaleString()} MXN</span></div></div>`;$('sendWa').href='https://wa.me/'+WA_NUMBER+'?text='+encodeURIComponent(buildMessage('cliente'));}
-function line(a,b){return `<div class="summary-line"><span>${a}</span><b>${b}</b></div>`;}
-function requiredOk(){const ids=['petName','petAge','petDate','ownerName','ownerPhone','ownerAddress'];return state.urnId&&state.species&&state.weight&&ids.every(id=>val(id)!=='—')&&(state.species!=='otro'||state.otherSpecies);}
-function activateWorker(){
-  workerMode=true;
-  document.body.classList.add('worker-mode');
-  $('workerButton').textContent='Modo trabajador NEXTLI';
-  $('workerPaymentWrap').style.display='block';
-  workerUnlockArmed=false;
-  logoTaps=0;
-  clearTimeout(workerUnlockTimer);
-}
-$('nextliTrigger').onclick=()=>{
-  if(workerMode)return;
-  logoTaps++;
-  if(logoTaps===1){
-    clearTimeout(workerUnlockTimer);
-    workerUnlockTimer=setTimeout(()=>{logoTaps=0;workerUnlockArmed=false;},WORKER_UNLOCK_WINDOW);
-  }
-  if(logoTaps===2){
-    workerUnlockArmed=true;
-    clearTimeout(workerUnlockTimer);
-    workerUnlockTimer=setTimeout(()=>{logoTaps=0;workerUnlockArmed=false;},WORKER_UNLOCK_WINDOW);
-  }
-};
-$('workerButton').onclick=()=>{
-  if(workerMode)return;
-  if(workerUnlockArmed){
-    activateWorker();
-  }else{
-    logoTaps=0;
-  }
-};
-$('workerButton').addEventListener('dblclick',e=>e.preventDefault());
-document.querySelectorAll('[data-service]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-service]').forEach(x=>x.classList.remove('selected'));b.classList.add('selected');state.service=b.dataset.service;goTo(2);});
-document.querySelectorAll('[data-wa-text]').forEach(b=>b.onclick=()=>window.open('https://wa.me/'+WA_NUMBER+'?text='+encodeURIComponent(b.dataset.waText),'_blank'));
-$('species').onchange=e=>{state.species=e.target.value;state.breed='';state.otherSpecies='';$('breedField').style.display=state.species==='perro'?'block':'none';$('catBreedField').style.display=state.species==='gato'?'block':'none';$('otherSpeciesField').style.display=state.species==='otro'?'block':'none';autoWeight();};
-$('otherSpecies').oninput=e=>{state.otherSpecies=e.target.value};
-$('breed').onchange=e=>{state.breed=e.target.value;autoWeight();};$('catBreed').onchange=e=>{state.breed=e.target.value;autoWeight();};$('weightRange').onchange=e=>{state.weight=e.target.value;renderUrns(state.weight);$('next2').disabled=!state.urnId;};$('manualWeightBtn').onclick=()=>{$('weightRange').focus();};
-$('next2').onclick=()=>goTo(state.service==='comunitaria'?4:3);
-[['addPlus','plus',500],['addHuella','huella',200],['addCert','cert',50]].forEach(([id,key])=>$(id).onchange=e=>{state[key]=e.target.checked;$('frameWrap').style.display=state.plus?'block':'none';$('colorWrap').style.display=state.plus?'block':'none';updateTotal();});
-document.querySelectorAll('[data-frame]').forEach(x=>x.onclick=()=>{document.querySelectorAll('[data-frame]').forEach(y=>y.classList.remove('selected'));x.classList.add('selected');state.frame=x.dataset.frame;});document.querySelectorAll('[data-color]').forEach(x=>x.onclick=()=>{document.querySelectorAll('[data-color]').forEach(y=>y.classList.remove('selected'));x.classList.add('selected');state.color=x.dataset.color;});$('next3').onclick=()=>goTo(4);document.querySelectorAll('[data-back]').forEach(b=>b.onclick=()=>goTo(+b.dataset.back));
-$('paymentStatus').onchange=e=>{$('paymentOther').style.display=e.target.value==='Otro'?'block':'none';state.paymentStatus=e.target.value};$('paymentOther').oninput=e=>state.paymentOther=e.target.value;
-$('next4').onclick=()=>{if(!requiredOk()){alert('Para continuar debes seleccionar una urna y completar todos los datos obligatorios del cliente.');return;}renderSummary();goTo(5);};
-$('useMyLocationBtn').onclick=()=>{const status=$('geoStatus');if(!navigator.geolocation){status.textContent='No disponible. Escribe la dirección manualmente.';status.style.display='block';return;}status.textContent='Obteniendo ubicación…';status.style.display='block';navigator.geolocation.getCurrentPosition(async p=>{try{const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${p.coords.latitude}&lon=${p.coords.longitude}`,{headers:{'Accept-Language':'es'}});const d=await r.json();$('ownerAddress').value=d.display_name||'';status.textContent='Dirección obtenida; puedes editarla.';}catch{status.textContent='No pudimos traducir la ubicación. Escríbela manualmente.';}},()=>status.textContent='Permiso de ubicación no disponible. Escribe la dirección manualmente.',{enableHighAccuracy:true,timeout:10000});};
-$('sendGroupWa').onclick=()=>window.open(NEXTLI_GROUP,'_blank');
-$('sendClientWa').onclick=()=>{window.open('https://wa.me/'+val('ownerPhone').replace(/\D/g,'')+'?text='+encodeURIComponent(buildMessage('cliente')),'_blank');generateCertificate();};
-$('downloadCertificate').onclick=generateCertificate;
-async function generateCertificate(){if(!requiredOk()){alert('Completa primero todos los datos obligatorios.');return;}const map={certPet:'petName',certOwner:'ownerName',certSpecies:null,certAge:'petAge',certDate:'petDate',certPhone:'ownerPhone',certAddress:'ownerAddress'};Object.entries(map).forEach(([a,b])=>{if(b)$(''+a).textContent=val(b)});$('certSpecies').textContent=speciesLabel()+(state.breed?' / '+state.breed:'');const el=$('certificateShell');el.style.left='0';try{await html2pdf().set({margin:0,filename:`Certificado-${safe(val('petName'))}-${safe(val('ownerName'))}.pdf`,image:{type:'jpeg',quality:.98},html2canvas:{scale:2,useCORS:true,backgroundColor:'#fbf7ee'},jsPDF:{unit:'pt',format:'letter',orientation:'portrait'}}).from(el).save();}finally{el.style.left='-100000px';}}
-function safe(s){return String(s).replace(/[\/:*?"<>|]+/g,'-').replace(/\s+/g,'-').replace(/^-|-$/g,'')||'Cremacion-Nextli';}
-renderUrns(null);updateTotal();
+renderUrns(null);syncUrnControls();updateTotal();
