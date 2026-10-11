@@ -27,5 +27,5 @@ window.NEXTLI_CONFIG = {
   // Respaldo SIN conexión: hash SHA-256 de la contraseña (no la contraseña en texto plano).
   // Debe corresponder a la misma contraseña que está guardada en Supabase.
   // Para generar otro hash: en la consola del navegador ejecuta  nextliHash('nueva-contraseña')
-  ADMIN_PASSWORD_HASH: '3f24d105850f2836830cd6cb5670643956b2005f903e9ff8616913791c459b32'
+  ADMIN_PASSWORD_HASH: 'fe106380d6dcaf823a3f47452f85606bacac08114b281e7745441edcec2ee1b0'
 };
