@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://nextli-servicios-funerarios.vercel.app/sitemap.xml
