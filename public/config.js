@@ -7,9 +7,22 @@ window.NEXTLI_CONFIG = {
   // Supabase: la clave publishable solo permite LEER; escribir exige la contraseña del panel.
   SUPABASE_URL: 'https://gzdoqxhvwiivwqmkxcem.supabase.co',
   SUPABASE_KEY: 'sb_publishable_QvTHUHAfwKdQ446LUc97sQ_z2ssLHDQ',
-  // Respaldo offline: hash SHA-256 de la contraseña (consola: nextliHash('nueva-contraseña')).
+  // ----- Panel de inventario del Modo Trabajador -----
+
+  // Respaldo offline: hash SHA-256 de la contraseña.
+
+  // Para generar otro hash: nextliHash('nueva-contraseña')
+
+  // Debe corresponder a la contraseña configurada en Supabase.
+
   ADMIN_PASSWORD_HASH: 'fe106380d6dcaf823a3f47452f85606bacac08114b281e7745441edcec2ee1b0',
-  // Apps Script que guarda el PDF en Drive (subcarpeta perro|gato|ave|otro). Vacío = desactivado.
+
+  // Apps Script que guarda el PDF en Google Drive.
+
+  // Organiza los respaldos por subcarpetas: perro, gato, ave u otro.
+
+  // Dejar vacío para desactivar el respaldo.
+
   DRIVE_BACKUP_URL: 'https://script.google.com/macros/s/AKfycbySmXX9TTypld7-r5vgAZ4lnG0r1HLCCKIQqbDtAIJXOYerNDVHsOzrVXJyfDKhyH4lng/exec'
 };
 
