@@ -211,7 +211,14 @@
   async function render(d, opts) {
     opts = opts || {};
     const W = opts.width || OUT_W, H = Math.round(W * REF_H / REF_W), k = W / REF_W;
-    const [seal] = await Promise.all([loadImage(opts.sealSrc || '/images/cert-seal.png'), ensureFonts()]);
+    const assets = window.NEXTLI_ASSETS || {};
+    const sealSrc = opts.sealSrc || assets.seal || '/images/cert-seal.png';
+    const sigSrc = opts.signatureSrc || assets.sig || '';
+    const [seal, signature] = await Promise.all([
+      loadImage(sealSrc),
+      sigSrc ? loadImage(sigSrc) : Promise.resolve(null),
+      ensureFonts()
+    ]).then(([sealImage, signatureImage]) => [sealImage, signatureImage]);
 
     const cv = document.createElement('canvas');
     cv.width = W; cv.height = H;
@@ -300,8 +307,18 @@
     ctx.fillText('FECHA DE DEFUNCIÓN', 340, footY + 24);
     if (ctx.letterSpacing !== undefined) ctx.letterSpacing = '0px';
 
-    // Pie: firma del médico (derecha)
+    // Pie: firma del médico (derecha). La imagen se mezcla para que el fondo blanco
+    // no tape el papel del certificado; si no carga, se conserva el diseño tipográfico.
     const doc = d.doctor || { name: 'Carlos Chávez', title: 'M.V.Z' };
+    if (signature) {
+      const maxW = 190, maxH = 70;
+      const sigScale = Math.min(maxW / signature.width, maxH / signature.height);
+      const sigW = signature.width * sigScale, sigH = signature.height * sigScale;
+      ctx.save();
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.drawImage(signature, 840 - sigW / 2, footY - 13 - sigH, sigW, sigH);
+      ctx.restore();
+    }
     ctx.fillRect(840 - 105, footY - 4, 210, 1.6);
     ctx.font = serif(26, 700, 'italic');
     ctx.fillText(doc.name, 840, footY + 24);
