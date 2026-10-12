@@ -13,8 +13,7 @@ window.NEXTLI_CONFIG = {
   DRIVE_BACKUP_URL: 'https://script.google.com/macros/s/AKfycbySmXX9TTypld7-r5vgAZ4lnG0r1HLCCKIQqbDtAIJXOYerNDVHsOzrVXJyfDKhyH4lng/exec'
 };
 
-/* WhatsApp compartido: se lee de Supabase (tabla nextli_settings). Se guarda copia en este dispositivo
-   para arrancar al instante y, si el valor en la nube cambió, la página se recarga una vez. */
+/* WhatsApp compartido (Supabase, tabla nextli_settings) con copia local para arrancar al instante */
 try {
   var _wa = localStorage.getItem('nextli_wa');
   if (/^\d{11,15}$/.test(_wa || '')) window.NEXTLI_CONFIG.WA_NUMBER = _wa;
@@ -53,14 +52,34 @@ window.addEventListener('load', function () {
     });
   }
 
-  /* 2 · Paso 3: imágenes completas, vinilos sin imagen azul y con punto de color */
+  /* 1b · Especie "Ave" con las 7 aves más comunes (certificado con pluma) */
+  var spSel = $('species'), birdBox = null;
+  if (spSel && !spSel.querySelector('option[value="ave"]')) {
+    var oa = document.createElement('option'); oa.value = 'ave'; oa.textContent = 'Ave';
+    spSel.insertBefore(oa, spSel.querySelector('option[value="otro"]'));
+    birdBox = document.createElement('div'); birdBox.className = 'field'; birdBox.style.display = 'none';
+    birdBox.innerHTML = '<label>Tipo de ave</label><select id="birdType"><option value="">Selecciona…</option>' +
+      ['Canario', 'Periquito', 'Agaporni', 'Ninfa', 'Cotorra', 'Loro', 'Paloma'].map(function (x) { return '<option>' + x + '</option>'; }).join('') + '</select>';
+    var bf = $('breedField'); bf.parentNode.insertBefore(birdBox, bf.nextSibling);
+    spSel.addEventListener('change', function () { birdBox.style.display = spSel.value === 'ave' ? 'block' : 'none'; $('birdType').value = ''; });
+    $('birdType').onchange = function (e) {
+      state.breed = e.target.value;
+      if (state.breed) { state.weight = 'chico'; $('weightRange').value = 'chico'; renderUrns(); applyServiceUI(); }
+    };
+  }
+
+  /* 2 · Paso 3, urnas del mismo tamaño y ubicación */
   var st = document.createElement('style');
   st.textContent = '[data-frame] img,[data-color] img{object-fit:contain!important;background-size:contain!important}' +
     '.nx-refimg{width:100%;height:auto!important;max-height:none!important;object-fit:contain!important}' +
+    '#urnGrid .pcard-media{aspect-ratio:1/1!important;height:auto!important;display:flex!important;align-items:center;justify-content:center;background:#fff!important;overflow:hidden}' +
+    '#urnGrid .pcard-media img{width:100%!important;height:100%!important;object-fit:contain!important;padding:8px;box-sizing:border-box;mix-blend-mode:multiply;background:transparent!important}' +
     '.nx-dot{display:inline-block;width:14px;height:14px;border-radius:50%;margin-right:8px;border:1px solid rgba(0,0,0,.35);vertical-align:-2px}' +
-    '.nx-loc{background:#fff;border:1px solid rgba(212,175,55,.6);border-radius:16px;padding:14px;margin:0 0 14px;text-align:center}' +
-    '.nx-loc h4{margin:0 0 4px;color:#0b192c}.nx-loc p{margin:0 0 10px;font-size:13px;color:#555}' +
-    '.nx-loc iframe{width:100%;height:190px;border:0;border-radius:12px}.nx-loc a{display:inline-block;margin-top:8px;font:600 12px Poppins,sans-serif;color:#0b192c}';
+    '.nx-loc{background:#fff;border:1px solid rgba(212,175,55,.6);border-radius:16px;margin:0 0 14px;overflow:hidden}' +
+    '.nx-loc-btn{width:100%;border:0;background:transparent;padding:14px;font:600 14px Poppins,sans-serif;color:#0b192c;cursor:pointer;text-align:left}' +
+    '.nx-loc-body{padding:0 14px 14px;text-align:center}.nx-loc-body p{margin:0 0 10px;font-size:13px;color:#555}' +
+    '.nx-loc iframe{width:100%;height:190px;border:0;border-radius:12px}' +
+    '.nx-go{display:inline-block;margin-top:10px;padding:8px 16px;border-radius:999px;background:#0b192c;color:#f3efe1!important;font:600 12px Poppins,sans-serif;text-decoration:none}';
   document.head.appendChild(st);
   var vi = document.querySelector('img.nx-refimg[src*="vinilos"]');
   if (vi) {
@@ -90,12 +109,21 @@ window.addEventListener('load', function () {
     };
   }
 
-  /* 6 · Ubicación en el Paso 1 y WhatsApp editable en el Modo Trabajador */
+  /* 6 · Ubicación (plegable) en el Paso 1 y WhatsApp editable en el Modo Trabajador */
   var grid = document.querySelector('[data-step="1"] .option-grid');
   if (grid) {
     var ADDR = 'José Bernardo Couto 226, México 2da Secc, 57620 Cdad. Nezahualcóyotl, Méx.', q = encodeURIComponent(ADDR);
+    var ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    var go = ios ? 'https://maps.apple.com/?daddr=' + q : 'https://www.google.com/maps/dir/?api=1&destination=' + q;
     var loc = document.createElement('div'); loc.className = 'nx-loc';
-    loc.innerHTML = '<h4>📍 Ubicación de NEXTLI</h4><p>' + ADDR + '</p><iframe title="Mapa de NEXTLI" loading="lazy" src="https://www.google.com/maps?q=' + q + '&output=embed"></iframe><a href="https://maps.google.com/?q=' + q + '" target="_blank" rel="noopener">Abrir en Google Maps</a>';
+    loc.innerHTML = '<button type="button" class="nx-loc-btn" aria-expanded="false">📍 Conoce dónde te esperamos</button>' +
+      '<div class="nx-loc-body" hidden><p>' + ADDR + '</p><iframe title="Mapa de NEXTLI" loading="lazy"></iframe><a class="nx-go" href="' + go + '" target="_blank" rel="noopener">Cómo llegar</a></div>';
+    var lb = loc.querySelector('.nx-loc-btn'), body = loc.querySelector('.nx-loc-body'), fr = loc.querySelector('iframe');
+    lb.onclick = function () {
+      var open = body.hidden;
+      if (open && !fr.src) fr.src = 'https://www.google.com/maps?q=' + q + '&output=embed';
+      body.hidden = !open; lb.setAttribute('aria-expanded', String(open));
+    };
     grid.parentNode.insertBefore(loc, grid);
   }
   var wb = document.querySelector('#workerBar .wb-actions');
@@ -166,6 +194,7 @@ window.addEventListener('load', function () {
 
   var origRender = C.render;
   C.render = async function (d, o) {
+    if (d.kind === 'ave' && !d.otherSpecies) d = Object.assign({}, d, { otherSpecies: 'Ave' });
     var cv = await origRender.call(C, d, o);
     var ctx = cv.getContext('2d'), k = cv.width / C.REF_W, kind = kindOf(d), folio = nextFolio();
     ctx.save(); ctx.scale(k, k);
@@ -196,7 +225,6 @@ window.addEventListener('load', function () {
       if (CFG.DRIVE_BACKUP_URL) {
         var r = new FileReader();
         r.onload = function () {
-          // no-cors: Apps Script no devuelve cabeceras CORS; el archivo se guarda igual.
           fetch(CFG.DRIVE_BACKUP_URL, {
             method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify({
