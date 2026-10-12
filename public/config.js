@@ -4,19 +4,20 @@ window.NEXTLI_CONFIG = {
   GROUP_URL: 'https://chat.whatsapp.com/KBc1dBIEJQHCoBTmrG96mi?s=cl&p=a&mlu=4&ilr=4',
   IMAGE_BASE: 'https://nextli-stroks15s-projects.vercel.app/images/',
   DOCTOR: { name: 'Carlos Chávez', title: 'M.V.Z' },
-  // Supabase: la clave publishable solo permite LEER el inventario; escribir exige la contraseña del panel.
+  // Supabase: la clave publishable solo permite LEER; escribir exige la contraseña del panel.
   SUPABASE_URL: 'https://gzdoqxhvwiivwqmkxcem.supabase.co',
   SUPABASE_KEY: 'sb_publishable_QvTHUHAfwKdQ446LUc97sQ_z2ssLHDQ',
   // Respaldo offline: hash SHA-256 de la contraseña (consola: nextliHash('nueva-contraseña')).
   ADMIN_PASSWORD_HASH: 'fe106380d6dcaf823a3f47452f85606bacac08114b281e7745441edcec2ee1b0',
-  // Servicio que recibe el PDF y lo guarda en Drive (subcarpeta perro|gato|ave|otro). Vacío = desactivado.
+  // URL (/exec) del Apps Script que guarda el PDF en Drive (subcarpeta perro|gato|ave|otro). Vacío = desactivado.
   DRIVE_BACKUP_URL: ''
 };
 
-/* WhatsApp editable desde el Modo Trabajador (se guarda en este dispositivo) */
+/* WhatsApp compartido: se lee de Supabase (tabla nextli_settings). Se guarda copia en este dispositivo
+   para arrancar al instante y, si el valor en la nube cambió, la página se recarga una vez. */
 try {
   var _wa = localStorage.getItem('nextli_wa');
-  if (/^\d{10,15}$/.test(_wa || '')) window.NEXTLI_CONFIG.WA_NUMBER = _wa;
+  if (/^\d{11,15}$/.test(_wa || '')) window.NEXTLI_CONFIG.WA_NUMBER = _wa;
 } catch (e) { /* sin almacenamiento */ }
 
 /* NEXTLI · Mejoras v2 (se aplican al terminar de cargar la página) */
@@ -24,6 +25,17 @@ window.addEventListener('load', function () {
   var CFG = window.NEXTLI_CONFIG, C = window.NextliCertificate, INV = window.NextliInventory;
   var $ = function (id) { return document.getElementById(id); };
   var norm = function (s) { return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim(); };
+  var SB = { apikey: CFG.SUPABASE_KEY, Authorization: 'Bearer ' + CFG.SUPABASE_KEY };
+
+  /* WhatsApp: sincronizar con Supabase */
+  fetch(CFG.SUPABASE_URL + '/rest/v1/nextli_settings?key=eq.wa_number&select=value', { headers: SB })
+    .then(function (r) { return r.json(); })
+    .then(function (rows) {
+      var v = rows && rows[0] && rows[0].value;
+      if (!/^\d{11,15}$/.test(v || '') || v === CFG.WA_NUMBER) return;
+      try { localStorage.setItem('nextli_wa', v); } catch (e) { return; }
+      if (!sessionStorage.getItem('nextli_wa_reloaded')) { sessionStorage.setItem('nextli_wa_reloaded', '1'); location.reload(); }
+    }).catch(function () { /* sin conexión: se usa la copia local */ });
 
   /* 1 · Más razas de perro */
   var sel = $('breed');
@@ -94,8 +106,17 @@ window.addEventListener('load', function () {
       if (v === null) return;
       var d = v.replace(/\D/g, ''); if (d.length === 10) d = '52' + d;
       if (!/^\d{11,15}$/.test(d)) { INV.toast('Número no válido. Revisa que tenga 10 dígitos.'); return; }
-      try { localStorage.setItem('nextli_wa', d); } catch (e) { INV.toast('No se pudo guardar en este dispositivo.'); return; }
-      INV.toast('WhatsApp actualizado. Recargando…'); setTimeout(function () { location.reload(); }, 900);
+      var pw = window.prompt('Contraseña del panel de trabajador, para confirmar el cambio:');
+      if (!pw) return;
+      fetch(CFG.SUPABASE_URL + '/rest/v1/rpc/nextli_settings_save', {
+        method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, SB),
+        body: JSON.stringify({ p_pw: pw, p_key: 'wa_number', p_value: d })
+      }).then(function (r) {
+        if (!r.ok) throw new Error('rechazado');
+        try { localStorage.setItem('nextli_wa', d); } catch (e) { /* ya quedó en la nube */ }
+        INV.toast('WhatsApp actualizado para todos. Recargando…');
+        setTimeout(function () { location.reload(); }, 900);
+      }).catch(function () { INV.toast('No se pudo guardar. Revisa la contraseña y tu conexión.'); });
     };
     wb.insertBefore(b, wb.firstChild);
   }
@@ -131,7 +152,6 @@ window.addEventListener('load', function () {
     catch (e) { n = Math.floor(Math.random() * 900) + 100; }
     return 'NX-' + ymd + '-' + String(n).padStart(3, '0') + Math.random().toString(36).slice(2, 4).toUpperCase();
   }
-  /* Sello: aureola sobre la cabeza del perro y tres aves volando a la derecha (sobre el sello en 612,790) */
   function sealExtras(ctx) {
     ctx.save(); ctx.strokeStyle = GREY; ctx.lineCap = 'round';
     ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(637, 739, 15, 3.6, 0, 0, Math.PI * 2); ctx.stroke();
