@@ -1,28 +1,21 @@
-# Simple workflow for deploying static content to GitHub Pages
+# Deploy NEXTLI static site from public/ to GitHub Pages.
 name: Deploy static content to Pages
 
 on:
-  # Runs on pushes targeting the default branch
   push:
     branches: ["main"]
-
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
 concurrency:
   group: "pages"
   cancel-in-progress: false
 
 jobs:
-  # Single deploy job since we're just deploying
   deploy:
     environment:
       name: github-pages
@@ -31,13 +24,47 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
+
+      - name: Prepare site from public/
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          import shutil
+
+          source = Path("public")
+          output = Path("_site")
+          if not (source / "index.html").is_file():
+              raise SystemExit("ERROR: public/index.html no existe; se cancela el despliegue.")
+          if output.exists():
+              shutil.rmtree(output)
+          shutil.copytree(source, output)
+          # GitHub Pages project sites live below /<repository>/, so convert
+          # local root-absolute asset paths into paths relative to the site.
+          targets = (
+              "images", "pwa", "configurator\\.css", "catalog\\.css",
+              "config\\.js", "cert-assets\\.js", "certificate\\.js",
+              "inventory\\.js", "app\\.js"
+          )
+          pattern = re.compile(r"(?<!:) /(?=(" + "|".join(targets) + r")(?:/|['\"?#)]|$))".replace(" ", ""))
+          for file in output.rglob("*"):
+              if file.is_file() and file.suffix.lower() in {".html", ".js", ".css", ".json", ".webmanifest"}:
+                  text = file.read_text(encoding="utf-8")
+                  text = pattern.sub("./", text)
+                  file.write_text(text, encoding="utf-8")
+          (output / ".nojekyll").touch()
+          print("Prepared GitHub Pages artifact from public/ with project-site paths.")
+          PY
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Upload entire repository
-          path: '.'
+          path: ./_site
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
