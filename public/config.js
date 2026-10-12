@@ -32,6 +32,26 @@ try {
   if (/^\d{11,15}$/.test(_wa || '')) window.NEXTLI_CONFIG.WA_NUMBER = _wa;
 } catch (e) { /* sin almacenamiento */ }
 
+/* Conexión con Supabase más tolerante: ante un corte de red reintenta hasta 3 veces
+   (a partir del segundo intento sin la opción no-store, que algunos navegadores móviles rechazan). */
+(function () {
+  var f = window.fetch, SBU = window.NEXTLI_CONFIG.SUPABASE_URL;
+  if (!f || !SBU) return;
+  window.fetch = function (u, o) {
+    var url = typeof u === 'string' ? u : (u && u.url) || '';
+    if (url.indexOf(SBU) !== 0) return f.apply(this, arguments);
+    var self = this, n = 0;
+    var go = function () {
+      var opts = n > 0 && o ? Object.assign({}, o, { cache: 'default' }) : o;
+      return f.call(self, u, opts).catch(function (e) {
+        if (++n > 3) throw e;
+        return new Promise(function (r) { setTimeout(r, n * 1200); }).then(go);
+      });
+    };
+    return go();
+  };
+})();
+
 /* NEXTLI · Mejoras v2 (se aplican al terminar de cargar la página) */
 window.addEventListener('load', function () {
   var CFG = window.NEXTLI_CONFIG, C = window.NextliCertificate, INV = window.NextliInventory;
@@ -83,7 +103,8 @@ window.addEventListener('load', function () {
 
   /* 2 · Urnas del mismo tamaño, imágenes completas y vinilos */
   var st = document.createElement('style');
-  st.textContent = '#urnGrid .urn-card img{width:100%!important;height:150px!important;object-fit:contain!important;padding:6px;box-sizing:border-box;mix-blend-mode:multiply;background:#fff!important}' +
+  st.textContent = '#urnGrid .pcard-media{aspect-ratio:1/1!important;height:auto!important;display:flex!important;align-items:center;justify-content:center;background:#fff!important;overflow:hidden}' +
+    '#urnGrid .pcard-media img{width:100%!important;height:100%!important;object-fit:contain!important;padding:8px;box-sizing:border-box;mix-blend-mode:multiply;background:transparent!important}' +
     '.nx-refimg{width:100%;height:auto!important;max-height:none!important;object-fit:contain!important}' +
     '.nx-dot{display:inline-block;width:14px;height:14px;border-radius:50%;margin-right:8px;border:1px solid rgba(0,0,0,.35);vertical-align:-2px}' +
     '.nx-loc{background:#fff;border:1px solid rgba(212,175,55,.6);border-radius:16px;margin:14px 0 0;overflow:hidden}' +
@@ -120,7 +141,7 @@ window.addEventListener('load', function () {
     };
   }
 
-  /* 6 · Ubicación (plegable, al final del Paso 1) y WhatsApp editable en el Modo Trabajador */
+  /* 6 · Ubicación (plegable, al final del Paso 1) */
   var grid = document.querySelector('[data-step="1"] .option-grid');
   if (grid) {
     var ADDR = 'José Bernardo Couto 226, México 2da Secc, 57620 Cdad. Nezahualcóyotl, Méx.', q = encodeURIComponent(ADDR);
@@ -137,9 +158,14 @@ window.addEventListener('load', function () {
     };
     grid.parentNode.insertBefore(loc, grid.nextSibling);
   }
-  var wb = document.querySelector('#workerBar .wb-actions');
-  if (wb) {
+
+  /* WhatsApp editable: solo aparece con la sesión de administración iniciada (junto a "Inventario") */
+  var wb = document.querySelector('#workerBar .wb-actions'), invBtn = $('adminInventoryBtn');
+  if (wb && invBtn) {
     var b = document.createElement('button'); b.type = 'button'; b.textContent = '📞 WhatsApp';
+    var syncBtn = function () { b.hidden = invBtn.hidden; b.style.display = invBtn.hidden ? 'none' : ''; };
+    new MutationObserver(syncBtn).observe(invBtn, { attributes: true, attributeFilter: ['hidden'] });
+    syncBtn();
     b.onclick = function () {
       var v = window.prompt('Número de WhatsApp de contacto (10 dígitos, o con lada de país):', CFG.WA_NUMBER);
       if (v === null) return;
@@ -157,10 +183,10 @@ window.addEventListener('load', function () {
         setTimeout(function () { location.reload(); }, 900);
       }).catch(function () { INV.toast('No se pudo guardar. Revisa la contraseña y tu conexión.'); });
     };
-    wb.insertBefore(b, wb.firstChild);
+    wb.insertBefore(b, invBtn);
   }
 
-  /* 4 y 5 · Certificado: icono por especie, logo con aureola y aves, folio */
+  /* 4 y 5 · Certificado: icono por especie, logo con aureola y aves, sello grande, folio */
   if (!C) return;
   var PAPER = '#f7f1e3', GOLD = '#a87a22', GREY = '#8b9099', BIRD = /\b(ave|pajaro|loro|canario|perico|cotorra|periquito|paloma|pato|gallina|pollo|guacamaya|cacatua)/;
   var kindOf = function (d) { return d.kind === 'otro' && BIRD.test(norm(d.otherSpecies || '')) ? 'ave' : d.kind; };
@@ -203,10 +229,36 @@ window.addEventListener('load', function () {
     ctx.restore();
   }
 
+  /* Fecha de defunción: se corre a la derecha (solo durante el dibujo) para que no choque con el adorno de la esquina */
+  var shift = 0, P = CanvasRenderingContext2D.prototype, ft = P.fillText, fr2 = P.fillRect;
+  P.fillText = function () { var a = [].slice.call(arguments); if (shift && a[1] === 340 && a[2] > 760) a[1] = 392; return ft.apply(this, a); };
+  P.fillRect = function (x, y, w, h) { return fr2.call(this, (shift && x === 235 && w === 210) ? 287 : x, y, w, h); };
+
+  /* Sello grande (cert-assets.js → seal): se dibuja a la derecha, translúcido; el centro conserva el logo original */
+  var stampSrc = null, stampImg = null;
+  function loadStamp() {
+    if (stampImg) return stampImg;
+    stampImg = new Promise(function (res) {
+      if (!stampSrc) return res(null);
+      var i = new Image(); i.onload = function () { res(i); }; i.onerror = function () { res(null); }; i.src = stampSrc;
+    });
+    return stampImg;
+  }
+
   var origRender = C.render;
   C.render = async function (d, o) {
     if (d.kind === 'ave' && !d.otherSpecies) d = Object.assign({}, d, { otherSpecies: 'Ave' });
-    var cv = await origRender.call(C, d, o);
+    var A = window.NEXTLI_ASSETS || {};
+    if (!stampSrc && A.seal) stampSrc = A.seal;
+    var cv, pr;
+    shift++;
+    try {
+      A.seal = null;                       // el sello central de certificate.js vuelve a ser el logo original
+      pr = origRender.call(C, d, o);       // certificate.js lee sus imágenes de forma síncrona, al empezar
+      A.seal = stampSrc;
+      cv = await pr;
+    } finally { shift--; if (stampSrc) A.seal = stampSrc; }
+    var stamp = await loadStamp();
     var ctx = cv.getContext('2d'), k = cv.width / C.REF_W, kind = kindOf(d), folio = nextFolio();
     ctx.save(); ctx.scale(k, k);
     if (kind !== 'perro') {
@@ -221,33 +273,68 @@ window.addEventListener('load', function () {
       else { feather(ctx, 316, 297, 0.5); paw(ctx, 291, 343, 0.42, false); paw(ctx, 341, 343, 0.42, true); }
     }
     sealExtras(ctx);
+    if (stamp) {                           // sello translúcido a la derecha (el blanco del fondo desaparece al multiplicar)
+      ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = 0.9;
+      ctx.drawImage(stamp, 833, 537, 246, 246);
+      ctx.restore();
+    }
     ctx.fillStyle = '#16130d'; ctx.textAlign = 'center';
     ctx.font = '700 17px "Cormorant Garamond","Times New Roman",Georgia,serif';
-    ctx.fillText('Folio: ' + folio, 340, 828);
+    ctx.fillText('Folio: ' + folio, 392, 828);
     ctx.restore();
     cv.nextliFolio = folio; cv.nextliKind = kind; cv.nextliName = d.name || 'Mascota';
     return cv;
   };
 
+  /* Respaldo en Drive (subcarpeta por especie, archivo con el nombre de la mascota) */
+  function backup(blob, cv) {
+    if (!CFG.DRIVE_BACKUP_URL) return;
+    var r = new FileReader();
+    r.onload = function () {
+      fetch(CFG.DRIVE_BACKUP_URL, {
+        method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+          folio: cv.nextliFolio, species: cv.nextliKind,
+          fileName: cv.nextliName.replace(/[\/:*?"<>|]+/g, '-') + '.pdf',
+          pdfBase64: String(r.result).split(',')[1]
+        })
+      }).catch(function () { /* no afecta al usuario */ });
+    };
+    r.readAsDataURL(blob);
+  }
   var origPdf = C.toPdfBlob;
-  C.toPdfBlob = async function (canvas, title) {
+  C.toPdfBlob = async function (canvas, title, opt) {
     var blob = await origPdf.call(C, canvas, title);
-    try {
-      if (CFG.DRIVE_BACKUP_URL) {
-        var r = new FileReader();
-        r.onload = function () {
-          fetch(CFG.DRIVE_BACKUP_URL, {
-            method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' },
-            body: JSON.stringify({
-              folio: canvas.nextliFolio, species: canvas.nextliKind,
-              fileName: canvas.nextliName.replace(/[\/:*?"<>|]+/g, '-') + '.pdf',
-              pdfBase64: String(r.result).split(',')[1]
-            })
-          }).catch(function () { /* no afecta la descarga */ });
-        };
-        r.readAsDataURL(blob);
-      }
-    } catch (e) { /* nunca bloquear la descarga */ }
+    if (!(opt && opt.noBackup)) { try { backup(blob, canvas); } catch (e) { /* nunca bloquear la descarga */ } }
     return blob;
   };
+
+  /* Modo cliente: el certificado se crea en silencio y se respalda en Drive, sin mostrarse ni descargarse */
+  var pre = { sig: '', p: null, sent: '' };
+  function prebuild() {
+    var d = certData(), sig = JSON.stringify(d);
+    if (pre.sig === sig && pre.p) return;
+    pre.sig = sig;
+    pre.p = C.render(d, { width: 2400 }).then(function (cv) {
+      return C.toPdfBlob(cv, 'Certificado de cremacion', { noBackup: true }).then(function (blob) { return { blob: blob, cv: cv }; });
+    });
+    pre.p.catch(function () { pre.p = null; });
+  }
+  var origRS = window.renderSummary;
+  if (typeof origRS === 'function') {
+    window.renderSummary = function () {
+      var r = origRS.apply(this, arguments);
+      try { if (!workerMode) setTimeout(function () { try { prebuild(); } catch (e) { /* datos incompletos */ } }, 0); } catch (e) { /* sin modo trabajador */ }
+      return r;
+    };
+  }
+  var sw = $('sendWa');
+  if (sw) sw.addEventListener('click', function () {
+    if (workerMode) return;
+    try {
+      prebuild();
+      var sig = pre.sig;
+      pre.p.then(function (r) { if (pre.sent !== sig) { pre.sent = sig; backup(r.blob, r.cv); } }).catch(function () { /* no afecta el envío por WhatsApp */ });
+    } catch (e) { /* no afecta el envío por WhatsApp */ }
+  });
 });
