@@ -186,10 +186,12 @@ window.addEventListener('load', function () {
     wb.insertBefore(b, invBtn);
   }
 
-  /* 4 y 5 · Certificado: icono por especie, logo con aureola y aves, sello grande, folio */
+  /* 4 y 5 · Certificado: icono por especie, logo con aureola y aves, sello grande, palabras y folio */
   if (!C) return;
-  var PAPER = '#f7f1e3', GOLD = '#a87a22', GREY = '#8b9099', BIRD = /\b(ave|pajaro|loro|canario|perico|cotorra|periquito|paloma|pato|gallina|pollo|guacamaya|cacatua)/;
+  var PAPER = '#f7f1e3', GOLD = '#a87a22', GREY = '#8b9099', INK = '#16130d', BIRD = /\b(ave|pajaro|loro|canario|perico|cotorra|periquito|paloma|pato|gallina|pollo|guacamaya|cacatua)/;
+  var SERIF = '"Cormorant Garamond","EB Garamond","Times New Roman",Georgia,serif';
   var kindOf = function (d) { return d.kind === 'otro' && BIRD.test(norm(d.otherSpecies || '')) ? 'ave' : d.kind; };
+  var phraseVal = function () { var e = $('farewellPhrase'); return e ? e.value.replace(/\s+/g, ' ').trim() : ''; };
   function paw(ctx, cx, cy, s, cat) {
     var pad = cat ? [22, 16] : [27, 19];
     var toes = cat ? [[-30, -14, 9, 9], [-11, -30, 9, 10], [11, -30, 9, 10], [30, -14, 9, 9]]
@@ -228,6 +230,37 @@ window.addEventListener('load', function () {
     });
     ctx.restore();
   }
+  /* Palabras para él o ella: solo si se escribieron. Se pone la dedicatoria bajo el nombre y se compacta el bloque de datos. */
+  function wrapLines(ctx, text, maxW) {
+    var words = text.split(' '), lines = [], cur = '';
+    words.forEach(function (w) {
+      var t = cur ? cur + ' ' + w : w;
+      if (ctx.measureText(t).width <= maxW || !cur) cur = t; else { lines.push(cur); cur = w; }
+    });
+    if (cur) lines.push(cur);
+    return lines;
+  }
+  function drawPhrase(ctx, d, phrase) {
+    ctx.fillStyle = PAPER; ctx.fillRect(290, 464, 740, 214);          // borra el bloque de datos original
+    ctx.fillStyle = INK; ctx.textAlign = 'center';
+    var text = '“' + phrase + '”', size = 27, lines, lh;
+    for (; size >= 17; size--) {                                       // el texto más largo usa letra más pequeña, siempre dentro del espacio
+      ctx.font = 'italic 500 ' + size + 'px ' + SERIF; lh = size * 1.24;
+      lines = wrapLines(ctx, text, 700);
+      if (lines.length * lh <= 96) break;
+    }
+    var y = 438 + size * 0.2;
+    lines.forEach(function (ln, i) { ctx.fillText(ln, 612, y + i * lh); });
+    var rows = [['Especie:', C.speciesLabel(d)], ['Raza:', d.breed || '—'], ['Edad:', C.formatAge(d.age)],
+                ['Tipo de cremación:', d.cremation || 'Individual'], ['Propietario:', d.owner || '—']];
+    rows.forEach(function (r, i) {
+      var ry = 556 + i * 32;
+      ctx.textAlign = 'left'; ctx.font = '500 28px ' + SERIF; ctx.fillText(r[0], 302, ry);
+      var s = 29; ctx.font = 'italic 700 ' + s + 'px ' + SERIF;
+      while (ctx.measureText(r[1]).width > 380 && s > 17) { s--; ctx.font = 'italic 700 ' + s + 'px ' + SERIF; }
+      ctx.textAlign = 'center'; ctx.fillText(r[1], 800, ry);
+    });
+  }
 
   /* Fecha de defunción: se corre a la derecha (solo durante el dibujo) para que no choque con el adorno de la esquina */
   var shift = 0, P = CanvasRenderingContext2D.prototype, ft = P.fillText, fr2 = P.fillRect;
@@ -248,6 +281,7 @@ window.addEventListener('load', function () {
   var origRender = C.render;
   C.render = async function (d, o) {
     if (d.kind === 'ave' && !d.otherSpecies) d = Object.assign({}, d, { otherSpecies: 'Ave' });
+    var phrase = d.phrase != null ? String(d.phrase).trim() : phraseVal();
     var A = window.NEXTLI_ASSETS || {};
     if (!stampSrc && A.seal) stampSrc = A.seal;
     var cv, pr;
@@ -259,8 +293,12 @@ window.addEventListener('load', function () {
       cv = await pr;
     } finally { shift--; if (stampSrc) A.seal = stampSrc; }
     var stamp = await loadStamp();
+    if (phrase && document.fonts && document.fonts.load) {
+      await Promise.race([document.fonts.load('italic 500 24px "Cormorant Garamond"', phrase).catch(function () { }), new Promise(function (r) { setTimeout(r, 1500); })]);
+    }
     var ctx = cv.getContext('2d'), k = cv.width / C.REF_W, kind = kindOf(d), folio = nextFolio();
     ctx.save(); ctx.scale(k, k);
+    if (phrase) drawPhrase(ctx, d, phrase);
     if (kind !== 'perro') {
       var g = ctx.createLinearGradient(0, 0, C.REF_W, C.REF_H);
       ['#8a5f14', '#d6b153', '#a87a22', '#e0c068', '#8a5f14'].forEach(function (c, i) { g.addColorStop(i / 4, c); });
@@ -278,8 +316,8 @@ window.addEventListener('load', function () {
       ctx.drawImage(stamp, 833, 537, 246, 246);
       ctx.restore();
     }
-    ctx.fillStyle = '#16130d'; ctx.textAlign = 'center';
-    ctx.font = '700 17px "Cormorant Garamond","Times New Roman",Georgia,serif';
+    ctx.fillStyle = INK; ctx.textAlign = 'center';
+    ctx.font = '700 17px ' + SERIF;
     ctx.fillText('Folio: ' + folio, 392, 828);
     ctx.restore();
     cv.nextliFolio = folio; cv.nextliKind = kind; cv.nextliName = d.name || 'Mascota';
@@ -312,7 +350,8 @@ window.addEventListener('load', function () {
   /* Modo cliente: el certificado se crea en silencio y se respalda en Drive, sin mostrarse ni descargarse */
   var pre = { sig: '', p: null, sent: '' };
   function prebuild() {
-    var d = certData(), sig = JSON.stringify(d);
+    var d = certData(); d.phrase = phraseVal();
+    var sig = JSON.stringify(d);
     if (pre.sig === sig && pre.p) return;
     pre.sig = sig;
     pre.p = C.render(d, { width: 2400 }).then(function (cv) {
