@@ -68,14 +68,12 @@ window.addEventListener('load', function () {
     };
   }
 
-  /* 2 · Paso 3, urnas del mismo tamaño y ubicación */
+  /* 2 · Urnas del mismo tamaño, imágenes completas y vinilos */
   var st = document.createElement('style');
-  st.textContent = '[data-frame] img,[data-color] img{object-fit:contain!important;background-size:contain!important}' +
+  st.textContent = '#urnGrid .urn-card img{width:100%!important;height:150px!important;object-fit:contain!important;padding:6px;box-sizing:border-box;mix-blend-mode:multiply;background:#fff!important}' +
     '.nx-refimg{width:100%;height:auto!important;max-height:none!important;object-fit:contain!important}' +
-    '#urnGrid .pcard-media{aspect-ratio:1/1!important;height:auto!important;display:flex!important;align-items:center;justify-content:center;background:#fff!important;overflow:hidden}' +
-    '#urnGrid .pcard-media img{width:100%!important;height:100%!important;object-fit:contain!important;padding:8px;box-sizing:border-box;mix-blend-mode:multiply;background:transparent!important}' +
     '.nx-dot{display:inline-block;width:14px;height:14px;border-radius:50%;margin-right:8px;border:1px solid rgba(0,0,0,.35);vertical-align:-2px}' +
-    '.nx-loc{background:#fff;border:1px solid rgba(212,175,55,.6);border-radius:16px;margin:0 0 14px;overflow:hidden}' +
+    '.nx-loc{background:#fff;border:1px solid rgba(212,175,55,.6);border-radius:16px;margin:14px 0 0;overflow:hidden}' +
     '.nx-loc-btn{width:100%;border:0;background:transparent;padding:14px;font:600 14px Poppins,sans-serif;color:#0b192c;cursor:pointer;text-align:left}' +
     '.nx-loc-body{padding:0 14px 14px;text-align:center}.nx-loc-body p{margin:0 0 10px;font-size:13px;color:#555}' +
     '.nx-loc iframe{width:100%;height:190px;border:0;border-radius:12px}' +
@@ -109,7 +107,7 @@ window.addEventListener('load', function () {
     };
   }
 
-  /* 6 · Ubicación (plegable) en el Paso 1 y WhatsApp editable en el Modo Trabajador */
+  /* 6 · Ubicación (plegable, al final del Paso 1) y WhatsApp editable en el Modo Trabajador */
   var grid = document.querySelector('[data-step="1"] .option-grid');
   if (grid) {
     var ADDR = 'José Bernardo Couto 226, México 2da Secc, 57620 Cdad. Nezahualcóyotl, Méx.', q = encodeURIComponent(ADDR);
@@ -124,7 +122,7 @@ window.addEventListener('load', function () {
       if (open && !fr.src) fr.src = 'https://www.google.com/maps?q=' + q + '&output=embed';
       body.hidden = !open; lb.setAttribute('aria-expanded', String(open));
     };
-    grid.parentNode.insertBefore(loc, grid);
+    grid.parentNode.insertBefore(loc, grid.nextSibling);
   }
   var wb = document.querySelector('#workerBar .wb-actions');
   if (wb) {
