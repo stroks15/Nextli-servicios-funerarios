@@ -43,19 +43,23 @@ jobs:
           if output.exists():
               shutil.rmtree(output)
           shutil.copytree(source, output)
-          # GitHub Pages project sites live below /<repository>/, so convert
-          # local root-absolute asset paths into paths relative to the site.
+
+          # Project Pages sites live under /<repository>/. Rewrite local
+          # root-absolute asset URLs so CSS, JS, images and PWA files resolve.
           targets = (
-              "images", "pwa", "configurator\\.css", "catalog\\.css",
-              "config\\.js", "cert-assets\\.js", "certificate\\.js",
-              "inventory\\.js", "app\\.js"
+              "images", "pwa", "configurator.css", "catalog.css",
+              "config.js", "cert-assets.js", "certificate.js",
+              "inventory.js", "app.js"
           )
-          pattern = re.compile(r"(?<!:) /(?=(" + "|".join(targets) + r")(?:/|['\"?#)]|$))".replace(" ", ""))
+          pattern = re.compile(
+              r"(?<!:)/(?=(" + "|".join(re.escape(item) for item in targets)
+              + r")(?:/|['\"?#)]|$))"
+          )
           for file in output.rglob("*"):
               if file.is_file() and file.suffix.lower() in {".html", ".js", ".css", ".json", ".webmanifest"}:
-                  text = file.read_text(encoding="utf-8")
-                  text = pattern.sub("./", text)
-                  file.write_text(text, encoding="utf-8")
+                  content = file.read_text(encoding="utf-8")
+                  content = pattern.sub("./", content)
+                  file.write_text(content, encoding="utf-8")
           (output / ".nojekyll").touch()
           print("Prepared GitHub Pages artifact from public/ with project-site paths.")
           PY
