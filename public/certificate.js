@@ -37,6 +37,40 @@
     });
   }
 
+  /**
+   * Integra sellos y firmas sobre el papel marfil del certificado.
+   * Elimina únicamente los píxeles casi blancos del fondo de la imagen,
+   * conservando los trazos, colores y detalles de la huella/silueta.
+   */
+  function imageWithoutWhiteBackground(image) {
+    if (!image) return null;
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = image.naturalWidth || image.width;
+      canvas.height = image.naturalHeight || image.height;
+      const c = canvas.getContext('2d', { willReadFrequently: true });
+      c.drawImage(image, 0, 0);
+      const frame = c.getImageData(0, 0, canvas.width, canvas.height);
+      const px = frame.data;
+      for (let i = 0; i < px.length; i += 4) {
+        const r = px[i], g = px[i + 1], b = px[i + 2];
+        const min = Math.min(r, g, b), max = Math.max(r, g, b);
+        // Transparencia gradual para eliminar el rectángulo blanco sin
+        // borrar trazos grises, negros o dorados de la imagen original.
+        if (r > 242 && g > 242 && b > 238) {
+          px[i + 3] = 0;
+        } else if (r > 220 && g > 220 && b > 215 && max - min < 18) {
+          px[i + 3] = Math.round(px[i + 3] * (242 - min) / 22);
+        }
+      }
+      c.putImageData(frame, 0, 0);
+      return canvas;
+    } catch (e) {
+      // Si el navegador impide procesar el recurso, conserva la imagen.
+      return image;
+    }
+  }
+
   async function ensureFonts() {
     if (!document.fonts || !document.fonts.load) return;
     const jobs = [
@@ -311,12 +345,12 @@
     // no tape el papel del certificado; si no carga, se conserva el diseño tipográfico.
     const doc = d.doctor || { name: 'Carlos Chávez', title: 'M.V.Z' };
     if (signature) {
+      const cleanSignature = imageWithoutWhiteBackground(signature);
       const maxW = 190, maxH = 70;
-      const sigScale = Math.min(maxW / signature.width, maxH / signature.height);
-      const sigW = signature.width * sigScale, sigH = signature.height * sigScale;
+      const sigScale = Math.min(maxW / cleanSignature.width, maxH / cleanSignature.height);
+      const sigW = cleanSignature.width * sigScale, sigH = cleanSignature.height * sigScale;
       ctx.save();
-      ctx.globalCompositeOperation = 'multiply';
-      ctx.drawImage(signature, 840 - sigW / 2, footY - 13 - sigH, sigW, sigH);
+      ctx.drawImage(cleanSignature, 840 - sigW / 2, footY - 13 - sigH, sigW, sigH);
       ctx.restore();
     }
     ctx.fillRect(840 - 105, footY - 4, 210, 1.6);
@@ -334,10 +368,11 @@
     ctx.lineWidth = 1.8;
     ctx.beginPath(); ctx.arc(sx, sy, sr - 9, 0, Math.PI * 2); ctx.stroke();
     if (seal) {
+      const cleanSeal = imageWithoutWhiteBackground(seal);
       const box = (sr - 11) * 2;
-      const sc = Math.min(box / seal.width, box / seal.height);
-      const w = seal.width * sc, h = seal.height * sc;
-      ctx.drawImage(seal, sx - w / 2, sy - h / 2, w, h);
+      const sc = Math.min(box / cleanSeal.width, box / cleanSeal.height);
+      const w = cleanSeal.width * sc, h = cleanSeal.height * sc;
+      ctx.drawImage(cleanSeal, sx - w / 2, sy - h / 2, w, h);
     }
 
     ctx.restore();
