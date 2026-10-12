@@ -25,15 +25,15 @@
 
   /* ---------- Catálogo base ---------- */
   const BASE_URNS = [
-    { id: 'clasica', name: 'Urna Clásica Pewter', desc: 'Líneas sobrias y atemporales, con un acabado sereno en pewter.', img: '/images/urna-clasica.jpg', prices: { chico: 1750, mediano: 1850, grande: 1950, xl: 2100 } },
-    { id: 'luna', name: 'Urna Luna Pewter', desc: 'Un diseño suave y silencioso, como una noche de luna.', img: '/images/urna-luna.jpg', prices: { chico: 1750 } },
-    { id: 'talavera', name: 'Urna de Talavera', desc: 'Artesanía mexicana con calidez y carácter propio.', img: '/images/urna-talavera.jpg', prices: { chico: 1750, mediano: 1950, grande: 2050, xl: 2150 } },
-    { id: 'talpewter', name: 'Talavera y Pewter', desc: 'La calidez de la Talavera junto a la elegancia del pewter.', img: '/images/urna-talavera-pewter.jpg', prices: { chico: 1950, mediano: 2050 } },
-    { id: 'huesohuella', name: 'Huesito con Huella', desc: 'Un detalle tierno que guarda su huella en el recuerdo.', img: '/images/urna-hueso-huella.jpg', prices: { chico: 1950, mediano: 2050, grande: 2150 } },
+    { id: 'clasica', name: 'Urna Clásica Pewter', desc: 'Líneas sobrias y atemporales, con un acabado sereno en pewter.', img: '/images/urna-clasica.png', prices: { chico: 1750, mediano: 1850, grande: 1950, xl: 2100 } },
+    { id: 'luna', name: 'Urna Luna Pewter', desc: 'Un diseño suave y silencioso, como una noche de luna.', img: '/images/urna-luna.png', prices: { chico: 1750 } },
+    { id: 'talavera', name: 'Urna de Talavera', desc: 'Artesanía mexicana con calidez y carácter propio.', img: '/images/urna-talavera.png', prices: { chico: 1750, mediano: 1950, grande: 2050, xl: 2150 } },
+    { id: 'talpewter', name: 'Talavera y Pewter', desc: 'La calidez de la Talavera junto a la elegancia del pewter.', img: '/images/urna-talavera-pewter.png', prices: { chico: 1950, mediano: 2050 } },
+    { id: 'huesohuella', name: 'Huesito con Huella', desc: 'Un detalle tierno que guarda su huella en el recuerdo.', img: '/images/urna-hueso-huella.png', prices: { chico: 1950, mediano: 2050, grande: 2150 } },
     { id: 'corazon', name: 'Urna Corazón', desc: 'Una forma de corazón para el amor que siempre permanece.', img: '/images/urna-corazon.png', prices: { chico: 1950, mediano: 2050, grande: 2150 } },
-    { id: 'casitalisa', name: 'Casita Lisa', desc: 'Un pequeño hogar de formas limpias para su descanso.', img: '/images/urna-casita-lisa.jpg', prices: { chico: 1950, mediano: 2050, grande: 2150, xl: 2250 } },
-    { id: 'casitateja', name: 'Casita con Teja', desc: 'Una casita con techo de teja, cálida como su compañía.', img: '/images/urna-casita-teja.jpg', prices: { chico: 1950, mediano: 2050, grande: 2150, xl: 2250 } },
-    { id: 'huesocromado', name: 'Huesito Cromado', desc: 'Un acabado cromado luminoso, en forma de huesito.', img: '/images/urna-hueso-cromado.jpg', prices: { chico: 1950, mediano: 2050, grande: 2150, xl: 2250 } }
+    { id: 'casitalisa', name: 'Casita Lisa', desc: 'Un pequeño hogar de formas limpias para su descanso.', img: '/images/urna-casita-lisa.png', prices: { chico: 1950, mediano: 2050, grande: 2150, xl: 2250 } },
+    { id: 'casitateja', name: 'Casita con Teja', desc: 'Una casita con techo de teja, cálida como su compañía.', img: '/images/urna-casita-teja.png', prices: { chico: 1950, mediano: 2050, grande: 2150, xl: 2250 } },
+    { id: 'huesocromado', name: 'Huesito Cromado', desc: 'Un acabado cromado luminoso, en forma de huesito.', img: '/images/urna-hueso-cromado.png', prices: { chico: 1950, mediano: 2050, grande: 2150, xl: 2250 } }
   ];
 
   const BASE_EXTRAS = [
@@ -45,9 +45,9 @@
   const BASE_COM = { chico: 800, mediano: 850, grande: 1100 };
 
   const IMAGE_LIBRARY = [
-    '/images/urna-clasica.jpg', '/images/urna-luna.jpg', '/images/urna-talavera.jpg', '/images/urna-talavera-pewter.jpg',
-    '/images/urna-hueso-huella.jpg', '/images/urna-corazon.png', '/images/urna-casita-lisa.jpg', '/images/urna-casita-teja.jpg',
-    '/images/urna-hueso-cromado.jpg', '/images/thumb-plus.jpg', '/images/thumb-huella.jpg', '/images/thumb-certificado.jpg',
+    '/images/urna-clasica.png', '/images/urna-luna.png', '/images/urna-talavera.png', '/images/urna-talavera-pewter.png',
+    '/images/urna-hueso-huella.png', '/images/urna-corazon.png', '/images/urna-casita-lisa.png', '/images/urna-casita-teja.png',
+    '/images/urna-hueso-cromado.png', '/images/thumb-plus.jpg', '/images/thumb-huella.jpg', '/images/thumb-certificado.jpg',
     '/images/homenaje-grande.jpg', '/images/huella-grande.jpg', '/images/certificado-grande.jpg', '/images/marcos.jpg', '/images/vinilos.jpg'
   ];
 
