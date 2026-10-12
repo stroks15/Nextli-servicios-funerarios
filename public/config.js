@@ -9,8 +9,8 @@ window.NEXTLI_CONFIG = {
   SUPABASE_KEY: 'sb_publishable_QvTHUHAfwKdQ446LUc97sQ_z2ssLHDQ',
   // Respaldo offline: hash SHA-256 de la contraseña (consola: nextliHash('nueva-contraseña')).
   ADMIN_PASSWORD_HASH: 'fe106380d6dcaf823a3f47452f85606bacac08114b281e7745441edcec2ee1b0',
-  // URL (/exec) del Apps Script que guarda el PDF en Drive (subcarpeta perro|gato|ave|otro). Vacío = desactivado.
-  DRIVE_BACKUP_URL: ''
+  // Apps Script que guarda el PDF en Drive (subcarpeta perro|gato|ave|otro). Vacío = desactivado.
+  DRIVE_BACKUP_URL: 'https://script.google.com/macros/s/AKfycbySmXX9TTypld7-r5vgAZ4lnG0r1HLCCKIQqbDtAIJXOYerNDVHsOzrVXJyfDKhyH4lng/exec'
 };
 
 /* WhatsApp compartido: se lee de Supabase (tabla nextli_settings). Se guarda copia en este dispositivo
@@ -196,8 +196,9 @@ window.addEventListener('load', function () {
       if (CFG.DRIVE_BACKUP_URL) {
         var r = new FileReader();
         r.onload = function () {
+          // no-cors: Apps Script no devuelve cabeceras CORS; el archivo se guarda igual.
           fetch(CFG.DRIVE_BACKUP_URL, {
-            method: 'POST', headers: { 'Content-Type': 'text/plain' },
+            method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify({
               folio: canvas.nextliFolio, species: canvas.nextliKind,
               fileName: canvas.nextliName.replace(/[\/:*?"<>|]+/g, '-') + '.pdf',
