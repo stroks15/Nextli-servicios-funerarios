@@ -192,14 +192,36 @@ window.addEventListener('load', function () {
   var SERIF = '"Cormorant Garamond","EB Garamond","Times New Roman",Georgia,serif';
   var kindOf = function (d) { return d.kind === 'otro' && BIRD.test(norm(d.otherSpecies || '')) ? 'ave' : d.kind; };
   var phraseVal = function () { var e = $('farewellPhrase'); return e ? e.value.replace(/\s+/g, ' ').trim() : ''; };
-  function paw(ctx, cx, cy, s, cat) {
-    var pad = cat ? [22, 16] : [27, 19];
-    var toes = cat ? [[-30, -14, 9, 9], [-11, -30, 9, 10], [11, -30, 9, 10], [30, -14, 9, 9]]
-                   : [[-34, -12, 10, 14], [-12, -30, 10, 14], [12, -30, 10, 14], [34, -12, 10, 14]];
-    ctx.beginPath(); ctx.ellipse(cx, cy + 8 * s, pad[0] * s, pad[1] * s, 0, 0, Math.PI * 2);
+  function paw(ctx, cx, cy, s) {          // huella de perro (solo para el icono pequeño de "otro")
+    var toes = [[-34, -12, 10, 14], [-12, -30, 10, 14], [12, -30, 10, 14], [34, -12, 10, 14]];
+    ctx.beginPath(); ctx.ellipse(cx, cy + 8 * s, 27 * s, 19 * s, 0, 0, Math.PI * 2);
     toes.forEach(function (t) {
       ctx.moveTo(cx + (t[0] + t[2]) * s, cy + t[1] * s);
       ctx.ellipse(cx + t[0] * s, cy + t[1] * s, t[2] * s, t[3] * s, 0, 0, Math.PI * 2);
+    });
+    ctx.fill();
+  }
+  /* Huella de gato con garras: almohadilla redondeada, cuatro dedos ovalados y una garra en gota sobre cada uno.
+     Coordenadas tomadas de la huella modelo (225×225) y reescaladas; mismo color y relleno que la huella de perro. */
+  function catPaw(ctx, cx, cy, s) {
+    var X = function (x) { return cx + (x - 112) * s; }, Y = function (y) { return cy + (y - 111) * s; };
+    ctx.beginPath();
+    ctx.moveTo(X(112), Y(124));                                       // almohadilla
+    ctx.bezierCurveTo(X(135), Y(124), X(150), Y(144), X(168), Y(160));
+    ctx.bezierCurveTo(X(184), Y(176), X(172), Y(205), X(140), Y(205));
+    ctx.bezierCurveTo(X(125), Y(205), X(118), Y(198), X(112), Y(198));
+    ctx.bezierCurveTo(X(106), Y(198), X(99), Y(205), X(84), Y(205));
+    ctx.bezierCurveTo(X(52), Y(205), X(40), Y(176), X(56), Y(160));
+    ctx.bezierCurveTo(X(74), Y(144), X(89), Y(124), X(112), Y(124));
+    ctx.closePath();
+    [[47, 102, 16, 25, -0.32, 55, 73], [87, 80, 19, 30, -0.1, 28, 46], [137, 80, 19, 30, 0.1, 28, 46], [177, 102, 16, 25, 0.32, 55, 73]].forEach(function (t) {
+      ctx.moveTo(X(t[0] + t[2]), Y(t[1]));                            // dedo
+      ctx.ellipse(X(t[0]), Y(t[1]), t[2] * s, t[3] * s, t[4], 0, Math.PI * 2);
+      var gx = t[0] + (t[0] < 112 ? -3 : 3), w = 5.5;                  // garra en forma de gota
+      ctx.moveTo(X(gx), Y(t[5]));
+      ctx.bezierCurveTo(X(gx + 1.5), Y(t[5] + 6), X(gx + w), Y(t[6] - 10), X(gx + w), Y(t[6] - 4.5));
+      ctx.arc(X(gx), Y(t[6] - 4.5), w * s, 0, Math.PI);
+      ctx.bezierCurveTo(X(gx - w), Y(t[6] - 10), X(gx - 1.5), Y(t[5] + 6), X(gx), Y(t[5]));
     });
     ctx.fill();
   }
@@ -306,9 +328,9 @@ window.addEventListener('load', function () {
       ctx.strokeStyle = g; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(316, 325, 66, 0, Math.PI * 2); ctx.stroke();
       ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(316, 325, 57, 0, Math.PI * 2); ctx.stroke();
       ctx.fillStyle = GOLD;
-      if (kind === 'gato') paw(ctx, 316, 329, 1, true);
+      if (kind === 'gato') catPaw(ctx, 316, 330, 0.5);
       else if (kind === 'ave') feather(ctx, 316, 325, 1);
-      else { feather(ctx, 316, 297, 0.5); paw(ctx, 291, 343, 0.42, false); paw(ctx, 341, 343, 0.42, true); }
+      else { feather(ctx, 316, 297, 0.5); paw(ctx, 291, 343, 0.42); catPaw(ctx, 341, 345, 0.21); }
     }
     sealExtras(ctx);
     if (stamp) {                           // sello translúcido a la derecha (el blanco del fondo desaparece al multiplicar)
