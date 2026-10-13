@@ -2,7 +2,7 @@
 window.NEXTLI_CONFIG = {
   WA_NUMBER: '525521889698',
   GROUP_URL: 'https://chat.whatsapp.com/KBc1dBIEJQHCoBTmrG96mi?s=cl&p=a&mlu=4&ilr=4',
-  IMAGE_BASE: 'https://nextli-stroks15s-projects.vercel.app/images/',
+  IMAGE_BASE: 'https://nextli-personaliza-despedida.vercel.app/images/',
   DOCTOR: { name: 'Carlos Chávez', title: 'M.V.Z' },
   // Supabase: la clave publishable solo permite LEER; escribir exige la contraseña del panel.
   SUPABASE_URL: 'https://gzdoqxhvwiivwqmkxcem.supabase.co',
