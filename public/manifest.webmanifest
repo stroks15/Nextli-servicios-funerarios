@@ -1,0 +1,22 @@
+{
+  "id": "/?modo=trabajador",
+  "name": "NEXTLI",
+  "short_name": "NEXTLI",
+  "description": "Configurador de servicios funerarios para mascotas. Acceso de trabajador.",
+  "lang": "es-MX",
+  "start_url": "/?modo=trabajador",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#0B192C",
+  "theme_color": "#0B192C",
+  "icons": [
+    {
+      "src": "/images/nextli-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

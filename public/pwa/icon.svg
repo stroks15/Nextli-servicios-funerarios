@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<defs>
+ <radialGradient id="bg" cx="48%" cy="45%" r="75%"><stop stop-color="#263b4b"/><stop offset=".58" stop-color="#10243c"/><stop offset="1" stop-color="#06152a"/></radialGradient>
+ <linearGradient id="silver" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff"/><stop offset=".48" stop-color="#aeb8bf"/><stop offset=".75" stop-color="#f5f1df"/><stop offset="1" stop-color="#8997a2"/></linearGradient>
+ <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff2b3"/><stop offset=".55" stop-color="#dfcc83"/><stop offset="1" stop-color="#8f855e"/></linearGradient>
+ <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="3"/></filter>
+</defs>
+<rect width="512" height="512" rx="92" fill="url(#bg)"/>
+<g opacity=".45" fill="#d9c991"><circle cx="82" cy="90" r="2.4"/><circle cx="140" cy="48" r="2"/><circle cx="420" cy="404" r="2.2"/><circle cx="52" cy="252" r="1.8"/></g>
+<path d="M174 93C91 117 45 204 69 283c9 31 27 56 49 73-64-65-60-170 56-263Z" fill="url(#silver)"/>
+<path d="M350 111c-22-3-35-19-35-37 12 5 18 1 23-12 12 13 18 29 12 49Z" fill="url(#silver)"/>
+<path d="M390 76c-15-2-21-13-19-26 9 4 15 0 19-10 9 10 11 23 0 36Z" fill="url(#silver)"/>
+<path d="M420 106c-15 0-23-10-22-23 10 4 15 0 21-9 7 11 9 22 1 32Z" fill="url(#silver)"/>
+<path d="M365 119c-13-2-18-12-16-23 8 4 13 0 17-8 7 10 8 21-1 31Z" fill="url(#silver)"/>
+<ellipse cx="274" cy="154" rx="39" ry="9" fill="none" stroke="url(#gold)" stroke-width="6"/>
+<path d="M254 180c-7-4-14-14-17-23-7 4-12 18-11 29l-9 30c-9 12-17 24-20 42l-14 36c-8 16-18 30-23 46-3 11-10 22-20 31-10 10-25 15-36 13-13-3-18-13-13-21 5-8 16-8 22-1 5-6 7-14 6-22-4-22 9-46 24-61l20-24 7-29c4-20 18-40 33-54 9-9 15-18 17-31 2-12 7-20 16-27 7 8 14 11 24 11 10 0 21-7 30-2 7 4 4 14 0 22l-11 17c-4 9-7 17-7 26l5 33c2 15 0 31-5 44l-10 31c-3 10-2 21 4 30l12 20c5 8 0 16-9 16-6 0-11-4-15-10l-19-25c-8-10-10-23-6-36l10-35-17 5c-11 4-23 3-33-3l-9 22c-4 10-6 21-3 31l6 19c3 9-3 16-12 15-6-1-10-6-12-12l-8-28c-5-17-3-35 6-51l17-31c6-12 10-24 11-37l2-22 12-19c6-9 12-18 14-28Z" fill="#000" opacity=".25" filter="url(#shadow)" transform="translate(8 9)"/>
+<path d="M254 180c-7-4-14-14-17-23-7 4-12 18-11 29l-9 30c-9 12-17 24-20 42l-14 36c-8 16-18 30-23 46-3 11-10 22-20 31-10 10-25 15-36 13-13-3-18-13-13-21 5-8 16-8 22-1 5-6 7-14 6-22-4-22 9-46 24-61l20-24 7-29c4-20 18-40 33-54 9-9 15-18 17-31 2-12 7-20 16-27 7 8 14 11 24 11 10 0 21-7 30-2 7 4 4 14 0 22l-11 17c-4 9-7 17-7 26l5 33c2 15 0 31-5 44l-10 31c-3 10-2 21 4 30l12 20c5 8 0 16-9 16-6 0-11-4-15-10l-19-25c-8-10-10-23-6-36l10-35-17 5c-11 4-23 3-33-3l-9 22c-4 10-6 21-3 31l6 19c3 9-3 16-12 15-6-1-10-6-12-12l-8-28c-5-17-3-35 6-51l17-31c6-12 10-24 11-37l2-22 12-19c6-9 12-18 14-28Z" fill="url(#gold)" stroke="#f2e5b2" stroke-width="1.5"/>
+<text x="256" y="424" text-anchor="middle" font-family="Georgia,serif" font-size="48" letter-spacing="5" fill="url(#silver)">NEXTLI</text>
+<path d="M444 393l5 13 13 5-13 5-5 13-5-13-13-5 13-5Z" fill="url(#silver)"/>
+<text x="256" y="457" text-anchor="middle" font-family="Georgia,serif" font-size="19" fill="#c6cbd0">servicio de cremación</text>
+</svg>

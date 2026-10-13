@@ -5,7 +5,7 @@
 const CFG = window.NEXTLI_CONFIG || {};
 const INV = window.NextliInventory;
 const CERT = window.NextliCertificate;
-const IMAGE_BASE = CFG.IMAGE_BASE || 'https://nextli-stroks15s-projects.vercel.app/images/';
+const IMAGE_BASE = CFG.IMAGE_BASE || 'https://nextli-personaliza-despedida.vercel.app/images/';
 const WA_NUMBER = CFG.WA_NUMBER || '525521889698';
 const NEXTLI_GROUP = CFG.GROUP_URL || 'https://chat.whatsapp.com/KBc1dBIEJQHCoBTmrG96mi?s=cl&p=a&mlu=4&ilr=4';
 
@@ -642,3 +642,84 @@ window.addEventListener('pageshow', e => { if (e.persisted && stateHydrated) { s
 /* ---------- Inicio ---------- */
 renderUrns(); renderExtras(); updatePriceLabels(); syncUrnControls(); updateTotal();
 try { if (sessionStorage.getItem(WORKER_KEY) === '1') activateWorker(); } catch (e) { /* sin almacenamiento */ }
+
+
+/* ---------- Bienvenida y aplicación instalable NEXTLI ---------- */
+(function initWelcomeAndInstall() {
+  var welcome = $('welcomeScreen');
+  var continueBtn = $('continueToConfigurator');
+  var installBtn = $('installAppBtn');
+  var deferredInstallPrompt = null;
+  var params = new URLSearchParams(window.location.search);
+  var workerLaunch = params.get('modo') === 'trabajador';
+  // Una sesión de trabajador ya iniciada en esta pestaña (p. ej. al volver de WhatsApp) entra directo, sin bienvenida.
+  try { if (!workerLaunch && sessionStorage.getItem(WORKER_KEY) === '1') workerLaunch = true; } catch (e) { /* sin almacenamiento */ }
+
+  function enterApp(asWorker) {
+    document.body.classList.add('app-ready');
+    if (welcome) welcome.setAttribute('aria-hidden', 'true');
+    if (asWorker && !workerMode) activateWorker();
+    if (asWorker) {
+      // Mantener la URL de inicio de la app instalada en modo trabajador.
+      document.documentElement.dataset.nextliLaunch = 'worker';
+    }
+  }
+
+  if (continueBtn) continueBtn.addEventListener('click', function() { enterApp(false); });
+  if (workerLaunch) {
+    enterApp(true);
+    // La URL de arranque instalada siempre abre directamente el configurador.
+    if (welcome) welcome.hidden = true;
+  } else {
+    document.body.classList.remove('app-ready');
+  }
+
+  function showInstallButton() {
+    if (!installBtn) return;
+    installBtn.hidden = false;
+    installBtn.textContent = 'Instalar app';
+  }
+  if (installBtn) {
+    installBtn.hidden = false;
+    installBtn.addEventListener('click', async function() {
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        try {
+          var choice = await deferredInstallPrompt.userChoice;
+          if (choice && choice.outcome === 'accepted') {
+            installBtn.textContent = 'Instalación solicitada';
+          }
+        } catch (e) { /* el navegador puede cerrar el diálogo */ }
+        deferredInstallPrompt = null;
+        return;
+      }
+      var ua = navigator.userAgent || '';
+      var isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      if (isIOS) {
+        alert('Para instalar NEXTLI en iPhone o iPad:\n1. Abre esta página en Safari.\n2. Pulsa Compartir.\n3. Elige “Añadir a pantalla de inicio”.\n4. Confirma con “Añadir”.\n\nLa app instalada abrirá directamente el configurador en modo trabajador.');
+      } else if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
+        alert('NEXTLI ya está abierta como aplicación instalada.');
+      } else {
+        alert('Si tu navegador no muestra la opción de instalación, abre el menú del navegador y selecciona “Instalar aplicación” o “Añadir a pantalla de inicio”.');
+      }
+    });
+  }
+
+  window.addEventListener('beforeinstallprompt', function(event) {
+    event.preventDefault();
+    deferredInstallPrompt = event;
+    showInstallButton();
+  });
+  window.addEventListener('appinstalled', function() {
+    deferredInstallPrompt = null;
+    if (installBtn) installBtn.textContent = 'App instalada';
+  });
+
+  if ('serviceWorker' in navigator && /^https?:$/.test(window.location.protocol)) {
+    window.addEventListener('load', function() {
+      navigator.serviceWorker.register('/sw.js').catch(function(err) {
+        console.warn('NEXTLI: no se pudo registrar el modo sin conexión.', err);
+      });
+    });
+  }
+})();
