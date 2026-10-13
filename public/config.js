@@ -186,9 +186,9 @@ window.addEventListener('load', function () {
     wb.insertBefore(b, invBtn);
   }
 
-  /* 4 y 5 · Certificado: icono por especie, logo con aureola y aves, sello grande, palabras y folio */
+  /* 4 y 5 · Certificado: icono por especie, sello grande, palabras y folio (el logo central queda como el original) */
   if (!C) return;
-  var PAPER = '#f7f1e3', GOLD = '#a87a22', GREY = '#8b9099', INK = '#16130d', BIRD = /\b(ave|pajaro|loro|canario|perico|cotorra|periquito|paloma|pato|gallina|pollo|guacamaya|cacatua)/;
+  var PAPER = '#f7f1e3', GOLD = '#a87a22', INK = '#16130d', BIRD = /\b(ave|pajaro|loro|canario|perico|cotorra|periquito|paloma|pato|gallina|pollo|guacamaya|cacatua)/;
   var SERIF = '"Cormorant Garamond","EB Garamond","Times New Roman",Georgia,serif';
   var kindOf = function (d) { return d.kind === 'otro' && BIRD.test(norm(d.otherSpecies || '')) ? 'ave' : d.kind; };
   var phraseVal = function () { var e = $('farewellPhrase'); return e ? e.value.replace(/\s+/g, ' ').trim() : ''; };
@@ -240,17 +240,6 @@ window.addEventListener('load', function () {
     try { n = (+localStorage.getItem(key) || 0) + 1; localStorage.setItem(key, n); }
     catch (e) { n = Math.floor(Math.random() * 900) + 100; }
     return 'NX-' + ymd + '-' + String(n).padStart(3, '0') + Math.random().toString(36).slice(2, 4).toUpperCase();
-  }
-  function sealExtras(ctx) {
-    ctx.save(); ctx.strokeStyle = GREY; ctx.lineCap = 'round';
-    ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(637, 739, 15, 3.6, 0, 0, Math.PI * 2); ctx.stroke();
-    ctx.lineWidth = 1.7;
-    [[659, 770, 1], [662, 783, 0.8], [652, 794, 0.65]].forEach(function (b) {
-      ctx.save(); ctx.translate(b[0], b[1]); ctx.scale(b[2], b[2]);
-      ctx.beginPath(); ctx.moveTo(-6, 0); ctx.quadraticCurveTo(-3, -5, 0, -1); ctx.quadraticCurveTo(3, -5, 6, 0); ctx.stroke();
-      ctx.restore();
-    });
-    ctx.restore();
   }
   /* Palabras para él o ella: solo si se escribieron. Se pone la dedicatoria bajo el nombre y se compacta el bloque de datos. */
   function wrapLines(ctx, text, maxW) {
@@ -332,7 +321,6 @@ window.addEventListener('load', function () {
       else if (kind === 'ave') feather(ctx, 316, 325, 1);
       else { feather(ctx, 316, 297, 0.5); paw(ctx, 291, 343, 0.42); catPaw(ctx, 341, 345, 0.21); }
     }
-    sealExtras(ctx);
     if (stamp) {                           // sello translúcido a la derecha (el blanco del fondo desaparece al multiplicar)
       ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = 0.9;
       ctx.drawImage(stamp, 833, 537, 246, 246);
