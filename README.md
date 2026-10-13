@@ -16,6 +16,11 @@ Sitio estático (HTML + JS puro). La carpeta `public/` se publica tal cual en Ve
 ## Modo Trabajador
 Toca dos veces el logo NEXTLI y después el botón de arriba (en menos de 3 s).
 
+La sesión del Modo Trabajador y la del panel se recuerdan **por pestaña** (`sessionStorage`, 8 h sin actividad), así que
+recargar la página o volver desde WhatsApp ya no las cierra. Para salir: botón **Salir** de la barra inferior.
+Las selecciones del configurador (servicio, especie, raza, peso, urna, extras) también se recuperan al volver; los datos
+personales (nombre, teléfono, dirección) nunca se guardan.
+
 ## Panel de inventario
 En la barra inferior del Modo Trabajador: **Iniciar sesión** → contraseña → **Inventario**.
 Permite cambiar precios, cambiar/subir imágenes y marcar productos como **Agotado/Disponible**.

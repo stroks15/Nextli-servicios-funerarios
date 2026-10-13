@@ -236,7 +236,7 @@ function calcBase() {
 }
 function extraPrice(id) { return getExtra(id).price; }
 function total() { return calcBase() + (state.plus ? extraPrice('plus') : 0) + (state.huella ? extraPrice('huella') : 0) + (state.cert ? extraPrice('cert') : 0); }
-function updateTotal() { $('runningTotal3').textContent = 'Total: ' + money(total()) + ' MXN'; updatePayNote(); }
+function updateTotal() { $('runningTotal3').textContent = 'Total: ' + money(total()) + ' MXN'; updatePayNote(); persistState(); }
 function extrasList() {
   if (isCom()) return [];
   return [
@@ -361,19 +361,32 @@ function renderSummary() {
   $('sendWa').href = 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(buildMessage('cliente'));
 }
 function requiredOk() {
+  syncStateFromControls();   // la validación siempre lee lo que la persona ve en pantalla
   const ids = ['petName', 'petAge', 'petDate', 'ownerName', 'ownerPhone', 'ownerAddress'];
   return hasValidSelection() && state.species && state.weight && ids.every(id => val(id) !== '—') && (state.species !== 'otro' || state.otherSpecies);
 }
 
 /* ---------- Modo Trabajador ---------- */
+/* El Modo Trabajador se recuerda por pestaña (sessionStorage) para que una recarga o un descarte de la
+   página —por ejemplo al ir a pegar el mensaje en WhatsApp— no lo apague ni cierre el panel. */
+const WORKER_KEY = 'nextli_worker_mode_v1';
 function activateWorker() {
   workerMode = true;
   document.body.classList.add('worker-mode');
   $('workerButton').textContent = 'Modo trabajador NEXTLI';
   $('workerPaymentWrap').style.display = 'block';
   workerUnlockArmed = false; logoTaps = 0; clearTimeout(workerUnlockTimer);
+  try { sessionStorage.setItem(WORKER_KEY, '1'); } catch (e) { /* sin almacenamiento */ }
   updatePayNote();
 }
+function exitWorker() {
+  const done = () => {
+    try { sessionStorage.removeItem(WORKER_KEY); sessionStorage.removeItem(CFG_KEY); } catch (e) { /* nada */ }
+    location.reload();
+  };
+  Promise.resolve(INV.logout()).then(done, done);   // envía cambios pendientes y cierra la sesión del panel
+}
+$('workerExitBtn').onclick = () => { if (window.confirm('¿Salir del Modo trabajador? También se cerrará la sesión del inventario.')) exitWorker(); };
 $('nextliTrigger').onclick = () => {
   if (workerMode) return;
   logoTaps++;
@@ -401,7 +414,7 @@ $('species').onchange = e => {
   $('otherSpeciesField').style.display = state.species === 'otro' ? 'block' : 'none';
   autoWeight();
 };
-$('otherSpecies').oninput = e => { state.otherSpecies = e.target.value; };
+$('otherSpecies').oninput = e => { state.otherSpecies = e.target.value; persistState(); };
 $('breed').onchange = e => { state.breed = e.target.value; autoWeight(); };
 $('catBreed').onchange = e => { state.breed = e.target.value; autoWeight(); };
 $('weightRange').onchange = e => {
@@ -412,8 +425,8 @@ $('weightRange').onchange = e => {
 };
 $('manualWeightBtn').onclick = () => { $('weightRange').focus(); };
 $('next2').onclick = () => goTo(isCom() ? 4 : 3);
-document.querySelectorAll('[data-frame]').forEach(x => x.onclick = () => { document.querySelectorAll('[data-frame]').forEach(y => y.classList.remove('selected')); x.classList.add('selected'); state.frame = x.dataset.frame; });
-document.querySelectorAll('[data-color]').forEach(x => x.onclick = () => { document.querySelectorAll('[data-color]').forEach(y => y.classList.remove('selected')); x.classList.add('selected'); state.color = x.dataset.color; });
+document.querySelectorAll('[data-frame]').forEach(x => x.onclick = () => { document.querySelectorAll('[data-frame]').forEach(y => y.classList.remove('selected')); x.classList.add('selected'); state.frame = x.dataset.frame; persistState(); });
+document.querySelectorAll('[data-color]').forEach(x => x.onclick = () => { document.querySelectorAll('[data-color]').forEach(y => y.classList.remove('selected')); x.classList.add('selected'); state.color = x.dataset.color; persistState(); });
 $('next3').onclick = () => goTo(4);
 document.querySelectorAll('[data-back]').forEach(b => b.onclick = () => {
   const to = +b.dataset.back;
@@ -544,8 +557,91 @@ INV.onChange(() => {
   if ($('summaryBox').innerHTML && document.querySelector('.step-panel[data-step="5"]').classList.contains('active')) renderSummary();
 });
 
+/* ---------- Estado ⇄ formulario (rehidratación) ----------
+   El navegador restaura por su cuenta los <select>/<input> al volver a la página (recarga, "atrás",
+   restauración de pestaña), pero `state` nacía vacío: la pantalla mostraba especie/raza/peso y la lógica
+   veía '' → "Siguiente" y la selección de urna fallaban hasta cambiar la especie o pulsar F5.
+   Regla: lo que está en los controles es la fuente de verdad; `state` se sincroniza desde ellos antes de
+   validar, y las selecciones NO sensibles se guardan en sessionStorage para recuperar también urna, servicio
+   y complementos. (Nombre, teléfono y dirección se leen siempre del propio formulario y no se guardan.) */
+const CFG_KEY = 'nextli_cfg_v1';
+const PERSIST_FIELDS = ['service', 'species', 'otherSpecies', 'breed', 'weight', 'urnId', 'plus', 'huella', 'cert', 'color', 'frame'];
+let stateHydrated = false;
+
+function hasOption(sel, v) { return !!sel && !!v && Array.from(sel.options).some(o => o.value === v); }
+
+function syncStateFromControls() {
+  const sp = $('species').value;
+  state.species = sp;
+  state.otherSpecies = sp === 'otro' ? $('otherSpecies').value.trim() : '';
+  state.breed = sp === 'perro' ? $('breed').value : sp === 'gato' ? $('catBreed').value : sp === 'ave' ? (($('birdType') || {}).value || '') : '';
+  state.weight = $('weightRange').value;
+  state.paymentStatus = $('paymentStatus').value || 'No pagado';
+  state.paymentOther = $('paymentOther').value;
+}
+window.nextliSyncState = syncStateFromControls;
+
+function persistState() {
+  if (!stateHydrated) return;   // evita pisar lo guardado con el estado vacío del arranque
+  try {
+    const empty = !state.service && !state.species && !state.urnId && !state.plus && !state.huella && !state.cert;
+    if (empty) sessionStorage.removeItem(CFG_KEY);
+    else sessionStorage.setItem(CFG_KEY, JSON.stringify(Object.fromEntries(PERSIST_FIELDS.map(k => [k, state[k]]))));
+  } catch (e) { /* sin almacenamiento */ }
+}
+
+function hydrateState() {
+  if (stateHydrated) return;
+  let saved = null;
+  try { saved = JSON.parse(sessionStorage.getItem(CFG_KEY) || 'null'); } catch (e) { saved = null; }
+  if (!saved || typeof saved !== 'object' || state.species || state.service) saved = {};   // si ya hubo interacción, no se pisa
+  const setSel = (id, v) => { const s = $(id); if (hasOption(s, v)) s.value = v; };
+  const domWeight = $('weightRange').value;
+
+  // 1) Servicio elegido
+  if (saved.service === 'individual' || saved.service === 'comunitaria') {
+    state.service = saved.service;
+    document.querySelectorAll('[data-service]').forEach(b => b.classList.toggle('selected', b.dataset.service === saved.service));
+  }
+  // 2) Especie (guardada, o la que restauró el navegador) → se dispara la cascada normal: campos de raza, tipo de ave…
+  setSel('species', saved.species);
+  const sp = $('species');
+  if (sp.value) sp.dispatchEvent(new Event('change'));
+  // 3) Raza / tipo de ave / otra especie, ya con sus campos visibles
+  if (sp.value === 'perro') setSel('breed', saved.breed);
+  else if (sp.value === 'gato') setSel('catBreed', saved.breed);
+  else if (sp.value === 'ave') setSel('birdType', saved.breed);
+  else if (sp.value === 'otro' && saved.otherSpecies && !$('otherSpecies').value) $('otherSpecies').value = saved.otherSpecies;
+  syncStateFromControls();
+  // 4) Peso: primero el sugerido por la raza, luego el que la persona había fijado
+  autoWeight();
+  setSel('weightRange', saved.weight || domWeight);
+  syncStateFromControls();
+  if (state.species === 'ave' && state.breed && !state.weight) { state.weight = 'chico'; $('weightRange').value = 'chico'; }
+  // 5) Urna y complementos
+  if (!isCom()) {
+    const u = saved.urnId && getUrn(saved.urnId);
+    if (u && !u.soldOut && (!state.weight || u.prices[state.weight])) state.urnId = saved.urnId;
+    ['plus', 'huella', 'cert'].forEach(k => { const x = getExtra(k); if (saved[k] === true && x && !x.soldOut) state[k] = true; });
+    if (state.plus) {
+      state.frame = typeof saved.frame === 'string' ? saved.frame : '';
+      state.color = typeof saved.color === 'string' ? saved.color : '';
+      document.querySelectorAll('[data-frame]').forEach(y => y.classList.toggle('selected', y.dataset.frame === state.frame));
+      document.querySelectorAll('[data-color]').forEach(y => y.classList.toggle('selected', y.dataset.color === state.color));
+    }
+  }
+  $('paymentOther').style.display = state.paymentStatus === 'Otro' ? 'block' : 'none';
+  stateHydrated = true;
+  renderUrns(); renderExtras(); applyServiceUI(); updateTotal();   // updateTotal también guarda el estado
+}
+
+/* Debe correr después de config.js (que añade más razas y la especie "Ave" en su evento load): se registra después de él. */
+if (document.readyState === 'complete') hydrateState(); else window.addEventListener('load', hydrateState);
+window.addEventListener('pageshow', e => { if (e.persisted && stateHydrated) { syncStateFromControls(); renderUrns(); applyServiceUI(); } });
+
 /* ---------- Inicio ---------- */
 renderUrns(); renderExtras(); updatePriceLabels(); syncUrnControls(); updateTotal();
+try { if (sessionStorage.getItem(WORKER_KEY) === '1') activateWorker(); } catch (e) { /* sin almacenamiento */ }
 
 
 /* ---------- Bienvenida y aplicación instalable NEXTLI ---------- */
@@ -556,6 +652,8 @@ renderUrns(); renderExtras(); updatePriceLabels(); syncUrnControls(); updateTota
   var deferredInstallPrompt = null;
   var params = new URLSearchParams(window.location.search);
   var workerLaunch = params.get('modo') === 'trabajador';
+  // Una sesión de trabajador ya iniciada en esta pestaña (p. ej. al volver de WhatsApp) entra directo, sin bienvenida.
+  try { if (!workerLaunch && sessionStorage.getItem(WORKER_KEY) === '1') workerLaunch = true; } catch (e) { /* sin almacenamiento */ }
 
   function enterApp(asWorker) {
     document.body.classList.add('app-ready');
