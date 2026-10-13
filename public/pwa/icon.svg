@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<rect width="512" height="512" rx="112" fill="#0B192C"/>
+<circle cx="256" cy="256" r="178" fill="none" stroke="#D4AF37" stroke-width="10"/>
+<path d="M256 350C225 325 150 270 150 210c0-43 57-66 106-13 49-53 106-30 106 13 0 60-75 115-106 140Z" fill="none" stroke="#F3EFE1" stroke-width="19" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="256" y="414" text-anchor="middle" font-family="Georgia,serif" font-size="34" letter-spacing="8" fill="#D4AF37">NEXTLI</text>
+</svg>
