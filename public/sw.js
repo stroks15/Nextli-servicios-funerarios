@@ -10,7 +10,7 @@ const CORE = [
   '/inventory.js',
   '/app.js',
   '/manifest.webmanifest',
-  '/pwa/icon.svg'
+  '/images/nextli-logo.png'
 ];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(CORE)).then(() => self.skipWaiting()));
