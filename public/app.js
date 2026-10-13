@@ -5,7 +5,7 @@
 const CFG = window.NEXTLI_CONFIG || {};
 const INV = window.NextliInventory;
 const CERT = window.NextliCertificate;
-const IMAGE_BASE = CFG.IMAGE_BASE || 'https://nextli-stroks15s-projects.vercel.app/images/';
+const IMAGE_BASE = CFG.IMAGE_BASE || 'https://nextli-personaliza-despedida.vercel.app/images/';
 const WA_NUMBER = CFG.WA_NUMBER || '525521889698';
 const NEXTLI_GROUP = CFG.GROUP_URL || 'https://chat.whatsapp.com/KBc1dBIEJQHCoBTmrG96mi?s=cl&p=a&mlu=4&ilr=4';
 
