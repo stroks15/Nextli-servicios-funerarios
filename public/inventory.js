@@ -182,9 +182,9 @@
       const r = await sbFetch('/rest/v1/rpc/nextli_inventory_save', { method: 'POST', body: JSON.stringify({ p_pw: adminPw, p_data: Object.assign({ v: 1 }, over) }) });
       const body = await r.text();
       if (!r.ok) throw new Error(body);
-      remoteTs = JSON.parse(body); dirty = false; setSync('ok');
+      remoteTs = JSON.parse(body); dirty = false; setSync('ok'); saveSession();   // renueva la ventana de inactividad
     } catch (e) {
-      if (/unauthorized/.test(String(e.message))) { setSync('denied'); toast('La contraseña no es válida en el servidor.'); }
+      if (/unauthorized/.test(String(e.message))) { setSync('denied'); clearSession(); toast('La contraseña no es válida en el servidor.'); }
       else { setSync('offline'); clearTimeout(pushTimer); pushTimer = setTimeout(push, 15000); }
     } finally { pushing = false; }
   }
@@ -259,6 +259,35 @@
 
   /* ---------- Sesión de administración ---------- */
   let admin = false, adminPw = '', failed = 0, lockedUntil = 0;
+
+  /* La sesión vive en sessionStorage (por pestaña, se borra al cerrarla). Antes solo existía en memoria:
+     cualquier recarga o descarte de la página (cambiar a WhatsApp, bloquear el teléfono, el aviso de
+     "WhatsApp actualizado") la destruía y el panel volvía a "Inventario bloqueado". */
+  const SESSION_KEY = 'nextli_admin_session_v1';
+  const SESSION_TTL = 8 * 60 * 60 * 1000;   // 8 h sin actividad
+  function saveSession() { try { sessionStorage.setItem(SESSION_KEY, JSON.stringify({ pw: adminPw, t: Date.now() })); } catch (e) { /* sin almacenamiento */ } }
+  function clearSession() { try { sessionStorage.removeItem(SESSION_KEY); } catch (e) { /* nada */ } }
+  async function restoreSession() {
+    let s = null;
+    try { s = JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null'); } catch (e) { s = null; }
+    if (!s || typeof s.pw !== 'string' || !s.pw || !(Date.now() - s.t < SESSION_TTL)) { clearSession(); return; }
+    admin = true; adminPw = s.pw; saveSession(); emitAdmin();   // se restaura al instante, sin parpadeo de "bloqueado"
+    // Verificación en segundo plano: solo se cierra si el servidor confirma que la contraseña ya no vale.
+    // Un fallo de red NUNCA cierra la sesión.
+    let valid = null;
+    try {
+      if (REMOTE) {
+        const r = await sbFetch('/rest/v1/rpc/nextli_inventory_check', { method: 'POST', body: JSON.stringify({ p_pw: adminPw }) });
+        const body = await r.text();
+        if (r.ok) valid = JSON.parse(body) === true;
+      } else if (CFG.ADMIN_PASSWORD_HASH) {
+        valid = (await sha256Hex(adminPw)) === String(CFG.ADMIN_PASSWORD_HASH).toLowerCase();
+      }
+    } catch (e) { /* sin conexión: se conserva la sesión */ }
+    if (valid === false) { admin = false; adminPw = ''; clearSession(); emitAdmin(); toast('La sesión de administración terminó. Inicia sesión de nuevo.'); }
+    else if (valid && REMOTE) pull();
+  }
+
   async function login(pw) {
     if (Date.now() < lockedUntil) return { ok: false, wait: Math.ceil((lockedUntil - Date.now()) / 1000) };
     // 1) Con servidor: la contraseña se valida en Supabase (es lo que protege la escritura).
@@ -267,7 +296,7 @@
         const r = await sbFetch('/rest/v1/rpc/nextli_inventory_check', { method: 'POST', body: JSON.stringify({ p_pw: pw }) });
         const body = await r.text();
         if (r.ok) {
-          if (JSON.parse(body) === true) { admin = true; adminPw = pw; failed = 0; emitAdmin(); await pull(); return { ok: true }; }
+          if (JSON.parse(body) === true) { admin = true; adminPw = pw; failed = 0; saveSession(); emitAdmin(); await pull(); return { ok: true }; }
           return { ok: false };
         }
         if (/too_many_attempts/.test(body)) return { ok: false, wait: 600 };
@@ -276,12 +305,12 @@
     // 2) Sin servidor / sin conexión: validación local con el hash de config.js
     if (!CFG.ADMIN_PASSWORD_HASH) return { ok: false, error: 'No hay contraseña configurada (config.js).' };
     const ok = (await sha256Hex(pw)) === String(CFG.ADMIN_PASSWORD_HASH).toLowerCase();
-    if (ok) { admin = true; adminPw = pw; failed = 0; emitAdmin(); return { ok: true }; }
+    if (ok) { admin = true; adminPw = pw; failed = 0; saveSession(); emitAdmin(); return { ok: true }; }
     failed++;
     if (failed >= 5) { failed = 0; lockedUntil = Date.now() + 30000; return { ok: false, wait: 30 }; }
     return { ok: false };
   }
-  async function logout() { if (REMOTE && dirty && admin && adminPw) await push(); admin = false; adminPw = ''; closePanel(); emitAdmin(); }
+  async function logout() { if (REMOTE && dirty && admin && adminPw) await push(); admin = false; adminPw = ''; clearSession(); closePanel(); emitAdmin(); }
   function emitAdmin() {
     document.body.classList.toggle('admin-mode', admin);
     const st = $('adminStatus'), li = $('adminLoginBtn'), inv = $('adminInventoryBtn'), lo = $('adminLogoutBtn');
@@ -516,11 +545,13 @@
     emitAdmin();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindBar); else bindBar();
+  restoreSession();
 
   window.NextliInventory = {
     SIZES, urns, extras, com, money,
     onChange: fn => listeners.push(fn),
     isAdmin: () => admin,
+    logout,
     esc, toast, sha256Hex, remote: REMOTE
   };
 })();

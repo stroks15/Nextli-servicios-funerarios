@@ -110,6 +110,7 @@ window.addEventListener('load', function () {
   var origSelect = window.selectUrn;
   if (typeof origSelect === 'function') {
     window.selectUrn = function (id) {
+      if (window.nextliSyncState) window.nextliSyncState();   // valida contra lo que muestran los controles, no contra un estado sin hidratar
       var breedOk = state.species === 'otro' ? state.otherSpecies : state.breed;
       if (!state.species || !breedOk || !state.weight) {
         INV.toast('Por favor, primero selecciona la especie, raza y peso de tu mascota antes de elegir una urna.');
