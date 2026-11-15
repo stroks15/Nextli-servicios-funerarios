@@ -193,7 +193,7 @@ function buildExtraCards() {
   const track = $('extrasTrack'); const left = track.scrollLeft; track.innerHTML = '';
   INV.extras().forEach(x => {
     const c = document.createElement('div');
-    c.className = 'pcard'; c.dataset.id = x.id; c.setAttribute('role', 'button'); c.tabIndex = 0;
+    c.className = 'pcard'; c.dataset.id = x.id; c.setAttribute('role', 'group'); c.setAttribute('aria-label', x.name + ': selecciona el complemento o ajusta su cantidad'); c.tabIndex = 0;
     c.innerHTML = `<div class="pcard-media"><span class="pcard-badge" hidden>Agotado por ahora</span><img src="${esc(x.img)}" alt="${esc(x.name)}" loading="lazy" decoding="async"></div>
       <div class="pcard-body"><p class="pcard-eyebrow">${esc(x.eyebrow)}</p><h5>${esc(x.name)}</h5><p class="pcard-desc">${esc(x.desc)}</p>
       <div class="pcard-price">+${money(x.price)} <small>MXN / unidad</small></div><button type="button" class="pcard-cta" tabindex="-1"></button><div class="extra-qty"><button type="button" data-qty-change="-1" aria-label="Quitar una unidad">−</button><output data-qty-value>0</output><button type="button" data-qty-change="1" aria-label="Agregar una unidad">+</button></div></div>`;
