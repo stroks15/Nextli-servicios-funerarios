@@ -7,7 +7,6 @@ const INV = window.NextliInventory;
 const CERT = window.NextliCertificate;
 const IMAGE_BASE = CFG.IMAGE_BASE || 'https://nextli-personaliza-despedida.vercel.app/images/';
 const WA_NUMBER = CFG.WA_NUMBER || '525521889698';
-const NEXTLI_GROUP = CFG.GROUP_URL || 'https://chat.whatsapp.com/KBc1dBIEJQHCoBTmrG96mi?s=cl&p=a&mlu=4&ilr=4';
 
 const SIZE_LABEL = { chico: 'Chico (0–10 kg)', mediano: 'Mediano (11–25 kg)', grande: 'Grande (26–45 kg)', xl: 'Extra grande (+45 kg)' };
 const breedSize = { Chihuahueño: 'chico', Poodle: 'chico', Pug: 'chico', Schnauzer: 'chico', Yorkshire: 'chico', Beagle: 'chico', Bulldog: 'mediano', Cocker: 'mediano', 'Golden Retriever': 'grande', Labrador: 'grande', 'Pastor Alemán': 'grande', 'Gran Danés': 'xl', Husky: 'grande' };
@@ -15,7 +14,7 @@ const catSize = { Siamés: 'chico', Persa: 'chico', 'Maine Coon': 'mediano', Rag
 
 let workerMode = false, logoTaps = 0, workerUnlockArmed = false, workerUnlockTimer = null;
 const WORKER_UNLOCK_WINDOW = 3000;
-let state = { service: null, species: '', otherSpecies: '', breed: '', weight: '', urnId: null, plus: false, huella: false, cert: false, color: '', frame: '', paymentStatus: 'No pagado', paymentOther: '' };
+let state = { service: null, species: '', otherSpecies: '', breed: '', weight: '', weightConfirmed: false, urnId: null, plus: false, huella: false, cert: false, plusQty: 0, huellaQty: 0, certQty: 0, petColor: '', petColorOther: '', color: '', frame: '', paymentStatus: 'No pagado', paymentOther: '' };
 
 const $ = id => document.getElementById(id);
 const val = id => (($(id)?.value || '').trim() || '—');
@@ -98,7 +97,7 @@ function cardKey(e, fn) { if (e.key === 'Enter' || e.key === ' ') { e.preventDef
 /* ---------- Urnas ---------- */
 let urnsDirty = true;
 function hasValidUrn() { const u = getUrn(state.urnId); return !!(u && !u.soldOut && state.weight && u.prices[state.weight]); }
-function hasValidSelection() { return isCom() ? !!(state.weight && comPrice()[state.weight]) : hasValidUrn(); }
+function hasValidSelection() { return !!state.weightConfirmed && (isCom() ? !!(state.weight && comPrice()[state.weight]) : hasValidUrn()); }
 function syncUrnControls() { $('next2').disabled = !hasValidSelection(); updateTotal(); }
 
 function buildUrnCards() {
@@ -161,25 +160,32 @@ function selectUrn(id) {
 /* ---------- Servicio comunitario: sin urna ---------- */
 function applyServiceUI() {
   const com = isCom();
-  $('urnPickerWrap').style.display = com ? 'none' : '';
+  $('urnPickerWrap').style.display = (com || !state.weight) ? 'none' : '';
   const note = $('comNote');
   if (com) {
     const p = state.weight && comPrice()[state.weight];
-    note.style.display = 'block';
+    note.style.display = state.weightConfirmed ? 'block' : 'none';
     note.textContent = !state.weight ? 'En la cremación comunitaria no se recupera la urna. Elige su peso para ver el valor.'
       : p ? `Valor del servicio comunitario: ${money(p)} MXN.` : 'Para mascotas de más de 45 kg, escríbenos y te ayudamos con gusto a coordinar el servicio.';
   } else note.style.display = 'none';
   syncUrnControls();
 }
 
+function revealStepField(id, visible) { const el = $(id); if (!el) return; el.style.display = visible ? '' : 'none'; if (visible) el.classList.add('step-reveal'); else el.classList.remove('step-reveal'); }
+function updatePetFlow() {
+  const ready = state.species === 'otro' ? !!state.otherSpecies.trim() : !!state.breed;
+  revealStepField('breedField', state.species === 'perro'); revealStepField('catBreedField', state.species === 'gato'); revealStepField('otherSpeciesField', state.species === 'otro');
+  revealStepField('weightField', !!state.species && ready);
+  revealStepField('manualWeightAction', !!(breedSize[state.breed] || catSize[state.breed]));
+  revealStepField('confirmWeightBtn', !!state.weight && !!state.species && ready && !state.weightConfirmed);
+  revealStepField('urnPickerWrap', !isCom() && !!state.weightConfirmed && !!state.species && ready);
+}
 function autoWeight() {
   const s = state.species === 'perro' ? breedSize[state.breed] : state.species === 'gato' ? catSize[state.breed] : null;
-  if (s) { state.weight = s; $('weightRange').value = s; $('manualWeightAction').style.display = 'block'; }
-  else { $('manualWeightAction').style.display = 'none'; }
-  const u = getUrn(state.urnId);
-  if (!u || !state.weight || !u.prices[state.weight] || u.soldOut) state.urnId = null;
-  renderUrns();
-  applyServiceUI();
+  if (s) { state.weight = s; $('weightRange').value = s; } else if (state.species !== 'otro') { state.weight = ''; $('weightRange').value = ''; }
+  state.weightConfirmed = false;
+  const u = getUrn(state.urnId); if (!u || !state.weight || !u.prices[state.weight] || u.soldOut) state.urnId = null;
+  updatePetFlow(); renderUrns(); applyServiceUI();
 }
 
 /* ---------- Complementos ---------- */
@@ -188,40 +194,40 @@ function buildExtraCards() {
   const track = $('extrasTrack'); const left = track.scrollLeft; track.innerHTML = '';
   INV.extras().forEach(x => {
     const c = document.createElement('div');
-    c.className = 'pcard'; c.dataset.id = x.id; c.setAttribute('role', 'button'); c.tabIndex = 0;
+    c.className = 'pcard'; c.dataset.id = x.id; c.setAttribute('role', 'group'); c.setAttribute('aria-label', x.name + ': selecciona el complemento o ajusta su cantidad'); c.tabIndex = 0;
     c.innerHTML = `<div class="pcard-media"><span class="pcard-badge" hidden>Agotado por ahora</span><img src="${esc(x.img)}" alt="${esc(x.name)}" loading="lazy" decoding="async"></div>
       <div class="pcard-body"><p class="pcard-eyebrow">${esc(x.eyebrow)}</p><h5>${esc(x.name)}</h5><p class="pcard-desc">${esc(x.desc)}</p>
-      <div class="pcard-price">+${money(x.price)} <small>MXN</small></div><button type="button" class="pcard-cta" tabindex="-1"></button></div>`;
+      <div class="pcard-price">+${money(x.price)} <small>MXN / unidad</small></div><button type="button" class="pcard-cta" tabindex="-1"></button><div class="extra-qty"><button type="button" data-qty-change="-1" aria-label="Quitar una unidad">−</button><output data-qty-value>0</output><button type="button" data-qty-change="1" aria-label="Agregar una unidad">+</button></div></div>`;
     localizeImg(c.querySelector('img'));
     const tog = () => toggleExtra(x.id);
-    c.onclick = tog; c.onkeydown = e => cardKey(e, tog);
+    c.onclick = e => { if (e.target.closest('[data-qty-change]')) return; tog(); };
+    c.querySelectorAll('[data-qty-change]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); changeExtraQty(x.id, Number(b.dataset.qtyChange)); }));
+    c.onkeydown = e => { if (!e.target.closest('[data-qty-change]')) cardKey(e, tog); };
     track.appendChild(c);
   });
   track.scrollLeft = left; extrasDirty = false;
 }
-function refreshExtraCards() {
-  INV.extras().forEach(x => {
-    if (x.soldOut && state[x.id]) state[x.id] = false;
-    const c = $('extrasTrack').querySelector(`[data-id="${x.id}"]`); if (!c) return;
-    c.classList.toggle('added', !!state[x.id]);
-    c.classList.toggle('soldout', x.soldOut);
-    c.querySelector('.pcard-badge').hidden = !x.soldOut;
-    c.querySelector('.pcard-cta').textContent = state[x.id] ? 'Agregado ✓' : 'Agregar';
-    c.setAttribute('aria-pressed', state[x.id] ? 'true' : 'false');
-  });
-  $('frameWrap').style.display = state.plus ? 'block' : 'none';
-  $('colorWrap').style.display = state.plus ? 'block' : 'none';
-}
-function toggleExtra(id) {
-  const x = getExtra(id);
-  if (x.soldOut) { INV.toast('Este detalle está agotado por ahora.'); return; }
-  state[id] = !state[id];
-  if (id === 'plus' && !state.plus) {
-    state.frame = ''; state.color = '';
-    document.querySelectorAll('[data-frame],[data-color]').forEach(y => y.classList.remove('selected'));
-  }
+function extraQty(id) { return Math.max(0, Math.floor(Number(state[id + 'Qty']) || 0)); }
+function setExtraQty(id, qty) {
+  const x = getExtra(id); if (!x || x.soldOut) { if (x && x.soldOut) INV.toast('Este detalle está agotado por ahora.'); return; }
+  state[id + 'Qty'] = Math.max(0, Math.min(99, Math.floor(Number(qty) || 0))); state[id] = state[id + 'Qty'] > 0;
+  if (id === 'plus' && !state.plus) { state.frame = ''; state.color = ''; document.querySelectorAll('[data-frame],[data-color]').forEach(y => y.classList.remove('selected')); }
   refreshExtraCards(); updateTotal();
 }
+function changeExtraQty(id, delta) { setExtraQty(id, extraQty(id) + delta); }
+function refreshExtraCards() {
+  INV.extras().forEach(x => {
+    if (x.soldOut && extraQty(x.id)) { state[x.id + 'Qty'] = 0; state[x.id] = false; }
+    const qty = extraQty(x.id), c = $('extrasTrack').querySelector(`[data-id="${x.id}"]`); if (!c) return;
+    c.classList.toggle('added', qty > 0); c.classList.toggle('soldout', x.soldOut); c.querySelector('.pcard-badge').hidden = !x.soldOut;
+    c.querySelector('.pcard-cta').textContent = qty ? 'Agregado ✓' : 'Agregar';
+    const out = c.querySelector('[data-qty-value]'); if (out) out.textContent = String(qty);
+    c.querySelectorAll('[data-qty-change]').forEach(b => b.disabled = x.soldOut || (b.dataset.qtyChange === '-1' && qty === 0));
+    c.setAttribute('aria-pressed', qty > 0 ? 'true' : 'false');
+  });
+  $('frameWrap').style.display = state.plus ? 'block' : 'none'; $('colorWrap').style.display = state.plus ? 'block' : 'none';
+}
+function toggleExtra(id) { setExtraQty(id, extraQty(id) ? 0 : 1); }
 function renderExtras() {
   if (extrasDirty) buildExtraCards();
   refreshExtraCards();
@@ -235,17 +241,11 @@ function calcBase() {
   return (u && u.prices[state.weight]) || 0;
 }
 function extraPrice(id) { return getExtra(id).price; }
-function total() { return calcBase() + (state.plus ? extraPrice('plus') : 0) + (state.huella ? extraPrice('huella') : 0) + (state.cert ? extraPrice('cert') : 0); }
+function total() { return calcBase() + ['plus','huella','cert'].reduce((sum, id) => sum + extraQty(id) * extraPrice(id), 0); }
 function updateTotal() { $('runningTotal3').textContent = 'Total: ' + money(total()) + ' MXN'; updatePayNote(); }
 function extrasList() {
   if (isCom()) return [];
-  return [
-    state.plus ? `Paquete Plus — Homenaje completo (+${money(extraPrice('plus'))} MXN)` : null,
-    state.huella ? `Huella con pelo de mascota (+${money(extraPrice('huella'))} MXN)` : null,
-    state.cert ? `Certificado físico adicional (+${money(extraPrice('cert'))} MXN)` : null,
-    state.plus && state.frame ? `Marco: ${state.frame}` : null,
-    state.plus && state.color ? `Vinilo: ${state.color}` : null
-  ].filter(Boolean);
+  return [...['plus','huella','cert'].filter(id => extraQty(id) > 0).map(id => `${extraQty(id)}x ${getExtra(id).name} (+${money(extraQty(id) * extraPrice(id))} MXN)`), state.plus && state.frame ? `Marco: ${state.frame}` : null, state.plus && state.color ? `Vinilo: ${state.color}` : null].filter(Boolean);
 }
 function updatePriceLabels() {
   const all = getUrns().filter(u => !u.soldOut).flatMap(u => Object.values(u.prices));
@@ -274,6 +274,7 @@ function updatePayNote() {
 
 /* ---------- Mensajes de WhatsApp ---------- */
 function speciesLabel() { return state.species === 'otro' ? (state.otherSpecies || 'Otro') : state.species ? state.species.charAt(0).toUpperCase() + state.species.slice(1) : '—'; }
+function petColorLabel() { return state.petColor === 'Otro' ? (state.petColorOther.trim() || 'Otro') : (state.petColor || '—'); }
 function fmtDate() { const v = $('petDate')?.value; return v ? CERT.formatDate(v) : '—'; }
 function mapsLink(a) { return a && a !== '—' ? 'https://maps.google.com/?q=' + encodeURIComponent(a) : ''; }
 function normalizePhone(raw) {
@@ -294,7 +295,7 @@ function buildMessage(audience) {
   if (audience === 'grupo') {
     const p = paymentInfo();
     const lines = [
-      '*🐾 NUEVA ORDEN — GRUPO NEXTLI*',
+      '*🐾 NUEVA ORDEN — NEXTLI*',
       `_Capturada en Modo Trabajador · ${nowStamp()}_`,
       '------------------------------',
       '*SERVICIO*',
@@ -307,6 +308,7 @@ function buildMessage(audience) {
       '*MASCOTA*',
       `*Nombre:* ${val('petName')}`,
       `*Especie / raza:* ${speciesLabel()}${breedTxt}`,
+      `*Color:* ${petColorLabel()}`,
       `*Edad:* ${val('petAge')}`,
       `*Fecha de defunción:* ${fmtDate()}`,
       `*Frase:* ${val('farewellPhrase')}`,
@@ -331,6 +333,7 @@ function buildMessage(audience) {
 *Servicio:* ${serviceName}
 *Mascota:* ${val('petName')}
 *Especie / raza:* ${speciesLabel()}${breedTxt}
+*Color:* ${petColorLabel()}
 *Edad:* ${val('petAge')}
 ${isCom() ? '' : `*Urna:* ${urn?.name || '—'}\n`}*Tamaño / peso:* ${SIZE_LABEL[state.weight] || '—'}
 *Adicionales:* ${ex.join(', ') || 'Ninguno'}
@@ -357,12 +360,12 @@ ${isCom() ? '' : `*Urna:* ${urn?.name || '—'}\n`}*Tamaño / peso:* ${SIZE_LABE
 function line(a, b) { return `<div class="summary-line"><span>${a}</span><b>${esc(b)}</b></div>`; }
 function renderSummary() {
   const urn = getUrn(state.urnId);
-  $('summaryBox').innerHTML = `<div class="summary-box"><h4>Resumen de tu solicitud</h4>${line('Servicio', isCom() ? 'Cremación Comunitaria' : 'Cremación Individual')}${line('Mascota', val('petName'))}${line('Especie / raza', speciesLabel() + (state.breed ? ' / ' + state.breed : ''))}${line('Tamaño / peso', SIZE_LABEL[state.weight] || '—')}${isCom() ? '' : line('Urna', urn?.name || '—')}${extrasList().map(x => line('Adicional', x)).join('')}${line('Propietario', val('ownerName'))}${line('Teléfono', val('ownerPhone'))}${line('Dirección', val('ownerAddress'))}${workerMode ? line('Pago', paymentLabel()) + line('Saldo pendiente', money(paymentInfo().balance) + ' MXN') : ''}<div class="summary-total"><span>Total estimado</span><span>${money(total())} MXN</span></div></div>`;
+  $('summaryBox').innerHTML = `<div class="summary-box"><h4>Resumen de tu solicitud</h4>${line('Servicio', isCom() ? 'Cremación Comunitaria' : 'Cremación Individual')}${line('Mascota', val('petName'))}${line('Especie / raza', speciesLabel() + (state.breed ? ' / ' + state.breed : ''))}${line('Color', petColorLabel())}${line('Tamaño / peso', SIZE_LABEL[state.weight] || '—')}${isCom() ? '' : line('Urna', urn?.name || '—')}${extrasList().map(x => line('Adicional', x)).join('')}${line('Propietario', val('ownerName'))}${line('Teléfono', val('ownerPhone'))}${line('Dirección', val('ownerAddress'))}${workerMode ? line('Pago', paymentLabel()) + line('Saldo pendiente', money(paymentInfo().balance) + ' MXN') : ''}<div class="summary-total"><span>Total estimado</span><span>${money(total())} MXN</span></div></div>`;
   $('sendWa').href = 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(buildMessage('cliente'));
 }
 function requiredOk() {
   const ids = ['petName', 'petAge', 'petDate', 'ownerName', 'ownerPhone', 'ownerAddress'];
-  return hasValidSelection() && state.species && state.weight && ids.every(id => val(id) !== '—') && (state.species !== 'otro' || state.otherSpecies);
+  return hasValidSelection() && state.species && state.weight && state.petColor && (state.petColor !== 'Otro' || state.petColorOther.trim()) && ids.every(id => val(id) !== '—') && (state.species !== 'otro' || state.otherSpecies.trim()) && (state.species === 'otro' || !!state.breed);
 }
 
 /* ---------- Modo Trabajador ---------- */
@@ -390,27 +393,24 @@ $('workerButton').addEventListener('dblclick', e => e.preventDefault());
 document.querySelectorAll('[data-service]').forEach(b => b.onclick = () => {
   document.querySelectorAll('[data-service]').forEach(x => x.classList.remove('selected'));
   b.classList.add('selected'); state.service = b.dataset.service;
-  if (isCom()) { state.plus = state.huella = state.cert = false; state.frame = state.color = ''; refreshExtraCards(); }
+  if (isCom()) { state.plus = state.huella = state.cert = false; state.plusQty = state.huellaQty = state.certQty = 0; state.frame = state.color = ''; refreshExtraCards(); }
   applyServiceUI(); renderUrns(); goTo(2);
 });
 document.querySelectorAll('[data-wa-text]').forEach(b => b.onclick = () => window.open('https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(b.dataset.waText), '_blank'));
 $('species').onchange = e => {
-  state.species = e.target.value; state.breed = ''; state.otherSpecies = '';
-  $('breedField').style.display = state.species === 'perro' ? 'block' : 'none';
-  $('catBreedField').style.display = state.species === 'gato' ? 'block' : 'none';
-  $('otherSpeciesField').style.display = state.species === 'otro' ? 'block' : 'none';
-  autoWeight();
+  state.species = e.target.value; state.breed = ''; state.otherSpecies = ''; state.weight = ''; state.weightConfirmed = false; state.urnId = null; $('breed').value = ''; $('catBreed').value = ''; $('weightRange').value = ''; updatePetFlow(); autoWeight();
 };
-$('otherSpecies').oninput = e => { state.otherSpecies = e.target.value; };
+$('otherSpecies').oninput = e => { state.otherSpecies = e.target.value; updatePetFlow(); if (state.species === 'otro') { state.weight = ''; state.weightConfirmed = false; $('weightRange').value = ''; } };
 $('breed').onchange = e => { state.breed = e.target.value; autoWeight(); };
 $('catBreed').onchange = e => { state.breed = e.target.value; autoWeight(); };
 $('weightRange').onchange = e => {
-  state.weight = e.target.value;
+  state.weight = e.target.value; state.weightConfirmed = false; updatePetFlow();
   const u = getUrn(state.urnId);
   if (!u || !u.prices[state.weight]) state.urnId = null;
   renderUrns(); applyServiceUI();
 };
 $('manualWeightBtn').onclick = () => { $('weightRange').focus(); };
+$('confirmWeightBtn').onclick = () => { if (!state.weight) return; state.weightConfirmed = true; updatePetFlow(); applyServiceUI(); };
 $('next2').onclick = () => goTo(isCom() ? 4 : 3);
 document.querySelectorAll('[data-frame]').forEach(x => x.onclick = () => { document.querySelectorAll('[data-frame]').forEach(y => y.classList.remove('selected')); x.classList.add('selected'); state.frame = x.dataset.frame; });
 document.querySelectorAll('[data-color]').forEach(x => x.onclick = () => { document.querySelectorAll('[data-color]').forEach(y => y.classList.remove('selected')); x.classList.add('selected'); state.color = x.dataset.color; });
@@ -421,6 +421,8 @@ document.querySelectorAll('[data-back]').forEach(b => b.onclick = () => {
 });
 $('paymentStatus').onchange = e => { $('paymentOther').style.display = e.target.value === 'Otro' ? 'block' : 'none'; state.paymentStatus = e.target.value; updatePayNote(); };
 $('paymentOther').oninput = e => { state.paymentOther = e.target.value; updatePayNote(); };
+$('petColor').onchange = e => { state.petColor = e.target.value; state.petColorOther = ''; $('petColorOther').style.display = state.petColor === 'Otro' ? 'block' : 'none'; if (state.petColor === 'Otro') $('petColorOther').focus(); };
+$('petColorOther').oninput = e => { state.petColorOther = e.target.value; };
 $('next4').onclick = () => {
   if (!requiredOk()) { alert('Para continuar, elige una urna y completa los datos marcados con *. Gracias por tu paciencia.'); return; }
   renderSummary(); goTo(5);
@@ -437,40 +439,18 @@ $('useMyLocationBtn').onclick = () => {
   }, () => status.textContent = 'Permiso de ubicación no disponible. Escribe la dirección manualmente.', { enableHighAccuracy: true, timeout: 10000 });
 };
 
-/* ---------- Envío al Grupo NEXTLI (Modo Trabajador) ----------
-   WhatsApp no deja prellenar texto en el enlace de un grupo. Por eso:
-   1) se arma el mensaje COMPLETO del trabajador (incluye pago y saldo),
-   2) se copia al portapapeles y se muestra para revisarlo,
-   3) "Copiar y abrir Grupo" lo copia otra vez y abre el grupo para pegarlo.
-   "Compartir…" usa el menú nativo del teléfono con el texto ya cargado. */
-async function copyText(text) {
-  try { if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(text); return true; } } catch (e) { /* respaldo */ }
-  try {
-    const ta = $('groupMsg'); const prevHidden = $('groupSheet').hidden;
-    if (!prevHidden) { ta.focus(); ta.select(); ta.setSelectionRange(0, ta.value.length); const ok = document.execCommand('copy'); ta.setSelectionRange(0, 0); return ok; }
-  } catch (e) { /* nada */ }
-  return false;
-}
-function closeGroupSheet() { $('groupSheet').hidden = true; }
+/* ---------- Envío directo a WhatsApp NEXTLI (Modo Trabajador) ----------
+   Usa el número de contacto configurado en NEXTLI_CONFIG / Supabase.
+   El mensaje incluye los datos completos de la orden y el estado del pago. */
 $('sendGroupWa').onclick = () => {
   if (!workerMode) return;
-  if (!requiredOk()) { alert('Completa primero todos los datos obligatorios para enviar la orden al grupo.'); return; }
-  const ta = $('groupMsg'); ta.value = buildMessage('grupo');
-  $('groupCopied').hidden = true; $('groupShare').hidden = !navigator.share;
-  $('groupSheet').hidden = false;
-  copyText(ta.value).then(ok => { $('groupCopied').hidden = !ok; });
+  if (!requiredOk()) { alert('Completa primero todos los datos obligatorios para enviar la orden a NEXTLI.'); return; }
+  const phone = normalizePhone(WA_NUMBER);
+  if (!/^\d{11,15}$/.test(phone)) { alert('El número de WhatsApp de NEXTLI no está configurado correctamente.'); return; }
+  const url = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(buildMessage('grupo'));
+  const opened = window.open(url, '_blank', 'noopener,noreferrer');
+  if (!opened) window.location.href = url;
 };
-$('groupCopy').onclick = async () => { const ok = await copyText($('groupMsg').value); $('groupCopied').hidden = !ok; if (!ok) INV.toast('No se pudo copiar. Mantén presionado el texto y elige “Copiar”.'); };
-$('groupOpen').onclick = () => {
-  const text = $('groupMsg').value;
-  const p = copyText(text);
-  const w = window.open(NEXTLI_GROUP, '_blank');
-  if (!w) window.location.href = NEXTLI_GROUP;
-  p.then(ok => { $('groupCopied').hidden = !ok; });
-};
-$('groupShare').onclick = async () => { try { await navigator.share({ text: $('groupMsg').value }); } catch (e) { /* cancelado */ } };
-$('groupClose').onclick = closeGroupSheet;
-$('groupSheet').addEventListener('mousedown', e => { if (e.target.id === 'groupSheet') closeGroupSheet(); });
 
 $('sendClientWa').onclick = () => {
   if (!workerMode) return;
@@ -493,7 +473,7 @@ function certData() {
   return {
     name: val('petName') === '—' ? '' : val('petName'),
     kind: state.species, otherSpecies: state.otherSpecies,
-    breed: breedForCert(), age: val('petAge'),
+    breed: breedForCert(), color: petColorLabel(), age: val('petAge'),
     cremation: isCom() ? 'Comunitaria' : 'Individual',
     owner: val('ownerName'), date: $('petDate').value,
     doctor: CFG.DOCTOR ? { name: CFG.DOCTOR.name, title: CFG.DOCTOR.title } : undefined
@@ -545,7 +525,7 @@ INV.onChange(() => {
 });
 
 /* ---------- Inicio ---------- */
-renderUrns(); renderExtras(); updatePriceLabels(); syncUrnControls(); updateTotal();
+renderUrns(); renderExtras(); updatePriceLabels(); syncUrnControls(); updateTotal(); updatePetFlow();
 
 
 /* ---------- Bienvenida y aplicación instalable NEXTLI ---------- */

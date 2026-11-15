@@ -237,6 +237,57 @@
     pawMedallion(ctx, x1 - 36, REF_H / 2 - 2, gold, paper);
   }
 
+  // SVG vectorial parametrizado: especie, raza y color del compañero.
+  // El SVG conserva fondo transparente y se rasteriza en el canvas del certificado.
+  function petIllustrationSvg(d) {
+    const rawColor = String(d.color || '').toLowerCase();
+    const palette = { miel:'#D4A373', café:'#6F4E37', cafe:'#6F4E37', negro:'#2B2B2B', blanco:'#F8F9FA', crema:'#F2E2C4', beige:'#DCC7A1', gris:'#9A9A9A', 'gris claro':'#C8C8C8', 'gris oscuro':'#55565A', dorado:'#C89B3C', rojizo:'#A65B3A', naranja:'#C97935', chocolate:'#5A3828', atigrado:'#A66A3F' };
+    const coat = palette[rawColor] || (/(blanco|crema|marfil)/.test(rawColor) ? '#F2E8D5' : /(negro|oscuro)/.test(rawColor) ? '#383838' : /(gris|plata)/.test(rawColor) ? '#99999B' : /(café|cafe|chocolate)/.test(rawColor) ? '#6F4E37' : /(rojo|naranja|canela)/.test(rawColor) ? '#B96F42' : '#B78B65');
+    const dark = /(negro|oscuro)/.test(rawColor) ? '#171717' : /(blanco|crema|marfil)/.test(rawColor) ? '#B8AFA3' : '#49372C';
+    const isCat = d.kind === 'gato';
+    const animal = String(d.otherSpecies || '').toLowerCase();
+    const isOther = d.kind !== 'perro' && d.kind !== 'gato';
+    const isBird = isOther && /(ave|pájaro|pajaro|canario|loro|periquito)/.test(animal);
+    const isRabbit = isOther && /(conejo|liebre)/.test(animal);
+    const breed = String(d.breed || '').toLowerCase();
+    if (isBird) return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="240" height="240"><ellipse cx="60" cy="108" rx="30" ry="5" fill="#8B7658" opacity=".13"/><path d="M42 91 Q17 75 28 48 Q38 20 68 31 Q99 41 89 75 Q82 99 54 98Z" fill="' + coat + '" stroke="' + dark + '" stroke-width="3"/><path d="M45 67 Q58 38 82 52 Q91 66 75 84 Q58 95 45 67Z" fill="' + dark + '" opacity=".22"/><path d="M86 49 L108 57 L87 65Z" fill="#D99A37" stroke="' + dark + '" stroke-width="2"/><circle cx="74" cy="48" r="4" fill="#211D19"/><circle cx="75" cy="47" r="1.2" fill="#fff"/><path d="M42 91 L32 108 M64 96 L60 110" stroke="' + dark + '" stroke-width="3" stroke-linecap="round"/><path d="M32 59 Q12 46 17 30" fill="none" stroke="' + coat + '" stroke-width="7" stroke-linecap="round"/></svg>';
+    if (isRabbit) return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="240" height="240"><ellipse cx="60" cy="108" rx="31" ry="5" fill="#8B7658" opacity=".13"/><path d="M39 48 Q18 0 35 8 Q49 13 53 45 M68 45 Q70 0 86 8 Q101 16 80 52" fill="' + coat + '" stroke="' + dark + '" stroke-width="3"/><ellipse cx="60" cy="62" rx="35" ry="37" fill="' + coat + '" stroke="' + dark + '" stroke-width="3"/><ellipse cx="48" cy="59" rx="4" ry="5" fill="#25211D"/><ellipse cx="72" cy="59" rx="4" ry="5" fill="#25211D"/><ellipse cx="60" cy="77" rx="17" ry="12" fill="#F5EBDD"/><circle cx="60" cy="72" r="3" fill="#A96F70"/><path d="M60 75 Q53 84 48 80 M60 75 Q67 84 72 80" fill="none" stroke="' + dark + '" stroke-width="2" stroke-linecap="round"/><circle cx="91" cy="91" r="8" fill="#F5EBDD" stroke="' + dark + '" stroke-width="2"/></svg>';
+    const upright = isCat || /husky|pastor alemán|chihuahueño|siamés|bengalí/.test(breed);
+    const floppy = /beagle|cocker|labrador|golden|retriever|poodle|persa|ragdoll/.test(breed);
+    const ears = isCat
+      ? '<path d="M34 47 L37 13 Q40 8 46 18 L55 38 M76 38 L85 17 Q92 8 94 20 L92 49" fill="' + coat + '" stroke="' + dark + '" stroke-width="3" stroke-linejoin="round"/>'
+      : upright
+        ? '<path d="M31 50 Q23 16 37 13 Q49 12 53 43 M72 43 Q78 12 91 14 Q103 18 91 54" fill="' + coat + '" stroke="' + dark + '" stroke-width="3" stroke-linejoin="round"/>'
+        : floppy
+          ? '<path d="M35 39 Q8 35 13 75 Q18 100 43 77 M78 39 Q105 32 99 73 Q94 99 71 77" fill="' + coat + '" stroke="' + dark + '" stroke-width="3" stroke-linejoin="round"/>'
+          : '<path d="M34 45 Q18 20 27 16 Q43 12 52 44 M73 44 Q82 12 98 17 Q104 24 89 48" fill="' + coat + '" stroke="' + dark + '" stroke-width="3" stroke-linejoin="round"/>';
+    const mask = /husky|siamés/.test(breed)
+      ? '<path d="M39 47 Q60 31 81 48 L75 78 Q60 91 45 78Z" fill="#F5EBDD" opacity=".9"/>'
+      : '';
+    const muzzle = isCat
+      ? '<path d="M48 68 Q60 58 72 68 Q69 81 60 81 Q51 81 48 68Z" fill="#F7E8DA"/><path d="M57 67 L63 67 L60 72Z" fill="#A96F70"/>'
+      : '<ellipse cx="60" cy="69" rx="19" ry="13" fill="#F5EBDD"/><ellipse cx="60" cy="65" rx="5" ry="3.5" fill="' + dark + '"/>';
+    const coatMark = /dálmata|dalmatian|bengalí/.test(breed)
+      ? '<g fill="' + dark + '"><circle cx="42" cy="54" r="4"/><circle cx="76" cy="55" r="4"/><circle cx="49" cy="81" r="3"/></g>'
+      : '';
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="240" height="240">'
+      + '<ellipse cx="60" cy="108" rx="34" ry="5" fill="#8B7658" opacity=".13"/>'
+      + '<path d="M39 84 Q24 81 25 99 Q25 105 42 103 L78 103 Q95 105 95 97 Q94 82 78 84Z" fill="' + coat + '" stroke="' + dark + '" stroke-width="3"/>'
+      + '<path d="M34 91 Q17 86 17 70 Q18 63 23 67 Q28 82 43 80" fill="none" stroke="' + dark + '" stroke-width="6" stroke-linecap="round"/>'
+      + ears
+      + '<ellipse cx="60" cy="57" rx="' + (isCat ? 31 : 34) + '" ry="35" fill="' + coat + '" stroke="' + dark + '" stroke-width="3"/>'
+      + mask + coatMark
+      + '<ellipse cx="47" cy="57" rx="4" ry="5" fill="#25211D"/><ellipse cx="73" cy="57" rx="4" ry="5" fill="#25211D"/>'
+      + '<circle cx="48" cy="55" r="1.4" fill="#fff"/><circle cx="74" cy="55" r="1.4" fill="#fff"/>'
+      + muzzle
+      + '<path d="M60 73 Q56 81 50 78 M60 73 Q64 81 70 78" fill="none" stroke="' + dark + '" stroke-width="2" stroke-linecap="round"/>'
+      + '<path d="M43 102 L42 110 M77 102 L78 110" stroke="' + dark + '" stroke-width="5" stroke-linecap="round"/>'
+      + '</svg>';
+  }
+  function petIllustrationData(d) {
+    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(petIllustrationSvg(d));
+  }
+
   /* ---------- Dibujo principal ---------- */
   /**
    * @param {Object} d  { name, kind, otherSpecies, breed, age, cremation, owner, date(YYYY-MM-DD), doctor:{name,title} }
@@ -248,11 +299,12 @@
     const assets = window.NEXTLI_ASSETS || {};
     const sealSrc = opts.sealSrc || assets.seal || '/images/cert-seal.png';
     const sigSrc = opts.signatureSrc || assets.sig || '';
-    const [seal, signature] = await Promise.all([
+    const [seal, signature, petPortrait] = await Promise.all([
       loadImage(sealSrc),
       sigSrc ? loadImage(sigSrc) : Promise.resolve(null),
+      loadImage(petIllustrationData(d)),
       ensureFonts()
-    ]).then(([sealImage, signatureImage]) => [sealImage, signatureImage]);
+    ]).then(([sealImage, signatureImage, portrait]) => [sealImage, signatureImage, portrait]);
 
     const cv = document.createElement('canvas');
     cv.width = W; cv.height = H;
@@ -296,8 +348,8 @@
     ctx.beginPath(); ctx.arc(px, py, 66, 0, Math.PI * 2); ctx.stroke();
     ctx.lineWidth = 1.6;
     ctx.beginPath(); ctx.arc(px, py, 57, 0, Math.PI * 2); ctx.stroke();
-    pawPath(ctx, px, py + 4, 1.0);
-    ctx.fillStyle = '#a87a22'; ctx.fill('nonzero');
+    if (petPortrait) ctx.drawImage(petPortrait, px - 51, py - 51, 102, 102);
+    else { pawPath(ctx, px, py + 4, 1.0); ctx.fillStyle = '#a87a22'; ctx.fill('nonzero'); }
 
     // Nombre + línea
     const nameCx = 612, nameMax = 420;
