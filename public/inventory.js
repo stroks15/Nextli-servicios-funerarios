@@ -204,14 +204,14 @@
       if (o.prices) Object.keys(o.prices).forEach(k => { if (o.prices[k] === null) delete prices[k]; else if (o.prices[k] > 0) prices[k] = o.prices[k]; });
       return Object.assign({}, u, o, { id: u.id, name: o.name || u.name, desc: o.desc || u.desc, defaultImg: u.img, img: o.img || u.img, prices, stock: Number.isFinite(o.stock) ? o.stock : null, soldOut: !!o.soldOut || (Number.isFinite(o.stock) && o.stock <= 0), edited: !!over.urns[u.id], custom: false });
     });
-    return built.concat(Object.values(over.customUrns || {}).map(u => Object.assign({}, u, { defaultImg: u.img, prices: u.prices || {}, stock: Number.isFinite(u.stock) ? u.stock : null, soldOut: !!u.soldOut || (Number.isFinite(u.stock) && u.stock <= 0), custom: true })));
+    return built.filter(u => !over.urns[u.id]?.deleted).concat(Object.values(over.customUrns || {}).map(u => Object.assign({}, u, { defaultImg: u.img, prices: u.prices || {}, stock: Number.isFinite(u.stock) ? u.stock : null, soldOut: !!u.soldOut || (Number.isFinite(u.stock) && u.stock <= 0), custom: true })));
   }
   function extras() {
     const built = BASE_EXTRAS.map(x => {
       const o = over.extras[x.id] || {};
       return Object.assign({}, x, o, { defaultImg: x.img, img: o.img || x.img, price: o.price > 0 ? o.price : x.price, stock: Number.isFinite(o.stock) ? o.stock : null, soldOut: !!o.soldOut || (Number.isFinite(o.stock) && o.stock <= 0), edited: !!over.extras[x.id], custom: false });
     });
-    return built.concat(Object.values(over.customExtras || {}).map(x => Object.assign({}, x, { defaultImg: x.img, stock: Number.isFinite(x.stock) ? x.stock : null, soldOut: !!x.soldOut || (Number.isFinite(x.stock) && x.stock <= 0), custom: true })));
+    return built.filter(x => !over.extras[x.id]?.deleted).concat(Object.values(over.customExtras || {}).map(x => Object.assign({}, x, { defaultImg: x.img, stock: Number.isFinite(x.stock) ? x.stock : null, soldOut: !!x.soldOut || (Number.isFinite(x.stock) && x.stock <= 0), custom: true })));
   }
   function persistItem(kind, id, data) {
     const bucket = kind === 'urn' ? 'customUrns' : 'customExtras';
@@ -240,8 +240,8 @@
   function removeItem(kind, id) {
     const custom = kind === 'urn' ? over.customUrns : over.customExtras;
     if (custom[id]) delete custom[id];
-    else if (kind === 'urn') delete over.urns[id];
-    else delete over.extras[id];
+    else if (kind === 'urn') over.urns[id] = { deleted: true };
+    else over.extras[id] = { deleted: true };
     if (save()) emit();
   }
   function com() { return Object.assign({}, BASE_COM, Object.fromEntries(Object.entries(over.com).filter(([, v]) => v > 0))); }
@@ -507,7 +507,8 @@
     if (img && !/^https:\/\//i.test(img) && !/^data:image\/(jpeg|png|webp);base64,/i.test(img)) { $('itemEditorError').textContent = 'Usa una URL HTTPS o una imagen válida.'; return; }
     const stockRaw = $('itemStock').value.trim(), stock = stockRaw === '' ? null : Number(stockRaw);
     if (stock !== null && (!Number.isInteger(stock) || stock < 0)) { $('itemEditorError').textContent = 'Las existencias deben ser un entero igual o mayor que cero.'; return; }
-    const data = { name, desc, img: img || '/images/thumb-plus.jpg', stock, soldOut: !$('itemActive').checked || stock === 0 };
+    const current = id ? (kind === 'urn' ? urns() : extras()).find(item => item.id === id) : null;
+    const data = { name, desc, img: img || current?.img || '/images/thumb-plus.jpg', stock, soldOut: !$('itemActive').checked || stock === 0 };
     if (kind === 'urn') {
       data.prices = {};
       SIZES.forEach(([key]) => { const enabled = $('itemUrnSizes').querySelector('[data-size-enabled="' + key + '"]').checked; const price = Number($('itemUrnSizes').querySelector('[data-size-price="' + key + '"]').value); if (enabled && Number.isFinite(price) && price > 0) data.prices[key] = price; });
