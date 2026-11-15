@@ -240,9 +240,10 @@
   // SVG vectorial parametrizado: especie, raza y color del compañero.
   // El SVG conserva fondo transparente y se rasteriza en el canvas del certificado.
   function petIllustrationSvg(d) {
-    const palette = { Miel:'#D4A373', Café:'#6F4E37', Negro:'#2B2B2B', Blanco:'#F8F9FA' };
-    const coat = palette[d.color] || '#B78B65';
-    const dark = d.color === 'Negro' ? '#171717' : d.color === 'Blanco' ? '#B8AFA3' : '#49372C';
+    const rawColor = String(d.color || '').toLowerCase();
+    const palette = { miel:'#D4A373', café:'#6F4E37', cafe:'#6F4E37', negro:'#2B2B2B', blanco:'#F8F9FA', crema:'#F2E2C4', beige:'#DCC7A1', gris:'#9A9A9A', 'gris claro':'#C8C8C8', 'gris oscuro':'#55565A', dorado:'#C89B3C', rojizo:'#A65B3A', naranja:'#C97935', chocolate:'#5A3828', atigrado:'#A66A3F' };
+    const coat = palette[rawColor] || (/(blanco|crema|marfil)/.test(rawColor) ? '#F2E8D5' : /(negro|oscuro)/.test(rawColor) ? '#383838' : /(gris|plata)/.test(rawColor) ? '#99999B' : /(café|cafe|chocolate)/.test(rawColor) ? '#6F4E37' : /(rojo|naranja|canela)/.test(rawColor) ? '#B96F42' : '#B78B65');
+    const dark = /(negro|oscuro)/.test(rawColor) ? '#171717' : /(blanco|crema|marfil)/.test(rawColor) ? '#B8AFA3' : '#49372C';
     const isCat = d.kind === 'gato';
     const breed = String(d.breed || '').toLowerCase();
     const upright = isCat || /husky|pastor alemán|chihuahueño|siamés|bengalí/.test(breed);
