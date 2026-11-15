@@ -342,13 +342,10 @@
     SUBTITLE.forEach((line, i) => ctx.fillText(line, REF_W / 2, 214 + i * 35));
     if (ctx.letterSpacing !== undefined) ctx.letterSpacing = '0px';
 
-    // Marcador de mascota (izquierda): huella dorada dentro de un círculo
+    // Emblema del animal sin círculo, colocado a la izquierda del nombre como en la referencia.
+    // La ilustración cambia de especie, raza y color según los datos capturados.
     const px = 316, py = 325;
-    ctx.strokeStyle = gold; ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.arc(px, py, 66, 0, Math.PI * 2); ctx.stroke();
-    ctx.lineWidth = 1.6;
-    ctx.beginPath(); ctx.arc(px, py, 57, 0, Math.PI * 2); ctx.stroke();
-    if (petPortrait) ctx.drawImage(petPortrait, px - 51, py - 51, 102, 102);
+    if (petPortrait) ctx.drawImage(petPortrait, px - 76, py - 64, 152, 128);
     else { pawPath(ctx, px, py + 4, 1.0); ctx.fillStyle = '#a87a22'; ctx.fill('nonzero'); }
 
     // Nombre + línea
