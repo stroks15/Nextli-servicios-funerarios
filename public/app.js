@@ -15,7 +15,7 @@ const catSize = { Siamés: 'chico', Persa: 'chico', 'Maine Coon': 'mediano', Rag
 
 let workerMode = false, logoTaps = 0, workerUnlockArmed = false, workerUnlockTimer = null;
 const WORKER_UNLOCK_WINDOW = 3000;
-let state = { service: null, species: '', otherSpecies: '', breed: '', weight: '', urnId: null, plus: false, huella: false, cert: false, plusQty: 0, huellaQty: 0, certQty: 0, petColor: '', petColorOther: '', color: '', frame: '', paymentStatus: 'No pagado', paymentOther: '' };
+let state = { service: null, species: '', otherSpecies: '', breed: '', weight: '', weightConfirmed: false, urnId: null, plus: false, huella: false, cert: false, plusQty: 0, huellaQty: 0, certQty: 0, petColor: '', petColorOther: '', color: '', frame: '', paymentStatus: 'No pagado', paymentOther: '' };
 
 const $ = id => document.getElementById(id);
 const val = id => (($(id)?.value || '').trim() || '—');
@@ -98,7 +98,7 @@ function cardKey(e, fn) { if (e.key === 'Enter' || e.key === ' ') { e.preventDef
 /* ---------- Urnas ---------- */
 let urnsDirty = true;
 function hasValidUrn() { const u = getUrn(state.urnId); return !!(u && !u.soldOut && state.weight && u.prices[state.weight]); }
-function hasValidSelection() { return isCom() ? !!(state.weight && comPrice()[state.weight]) : hasValidUrn(); }
+function hasValidSelection() { return !!state.weightConfirmed && (isCom() ? !!(state.weight && comPrice()[state.weight]) : hasValidUrn()); }
 function syncUrnControls() { $('next2').disabled = !hasValidSelection(); updateTotal(); }
 
 function buildUrnCards() {
@@ -165,7 +165,7 @@ function applyServiceUI() {
   const note = $('comNote');
   if (com) {
     const p = state.weight && comPrice()[state.weight];
-    note.style.display = 'block';
+    note.style.display = state.weightConfirmed ? 'block' : 'none';
     note.textContent = !state.weight ? 'En la cremación comunitaria no se recupera la urna. Elige su peso para ver el valor.'
       : p ? `Valor del servicio comunitario: ${money(p)} MXN.` : 'Para mascotas de más de 45 kg, escríbenos y te ayudamos con gusto a coordinar el servicio.';
   } else note.style.display = 'none';
@@ -178,11 +178,13 @@ function updatePetFlow() {
   revealStepField('breedField', state.species === 'perro'); revealStepField('catBreedField', state.species === 'gato'); revealStepField('otherSpeciesField', state.species === 'otro');
   revealStepField('weightField', !!state.species && ready);
   revealStepField('manualWeightAction', !!(breedSize[state.breed] || catSize[state.breed]));
-  revealStepField('urnPickerWrap', !isCom() && !!state.weight && !!state.species && ready);
+  revealStepField('confirmWeightBtn', !!state.weight && !!state.species && ready && !state.weightConfirmed);
+  revealStepField('urnPickerWrap', !isCom() && !!state.weightConfirmed && !!state.species && ready);
 }
 function autoWeight() {
   const s = state.species === 'perro' ? breedSize[state.breed] : state.species === 'gato' ? catSize[state.breed] : null;
   if (s) { state.weight = s; $('weightRange').value = s; } else if (state.species !== 'otro') { state.weight = ''; $('weightRange').value = ''; }
+  state.weightConfirmed = false;
   const u = getUrn(state.urnId); if (!u || !state.weight || !u.prices[state.weight] || u.soldOut) state.urnId = null;
   updatePetFlow(); renderUrns(); applyServiceUI();
 }
@@ -397,18 +399,19 @@ document.querySelectorAll('[data-service]').forEach(b => b.onclick = () => {
 });
 document.querySelectorAll('[data-wa-text]').forEach(b => b.onclick = () => window.open('https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(b.dataset.waText), '_blank'));
 $('species').onchange = e => {
-  state.species = e.target.value; state.breed = ''; state.otherSpecies = ''; state.weight = ''; state.urnId = null; $('breed').value = ''; $('catBreed').value = ''; $('weightRange').value = ''; updatePetFlow(); autoWeight();
+  state.species = e.target.value; state.breed = ''; state.otherSpecies = ''; state.weight = ''; state.weightConfirmed = false; state.urnId = null; $('breed').value = ''; $('catBreed').value = ''; $('weightRange').value = ''; updatePetFlow(); autoWeight();
 };
-$('otherSpecies').oninput = e => { state.otherSpecies = e.target.value; updatePetFlow(); if (state.species === 'otro') { state.weight = ''; $('weightRange').value = ''; } };
+$('otherSpecies').oninput = e => { state.otherSpecies = e.target.value; updatePetFlow(); if (state.species === 'otro') { state.weight = ''; state.weightConfirmed = false; $('weightRange').value = ''; } };
 $('breed').onchange = e => { state.breed = e.target.value; autoWeight(); };
 $('catBreed').onchange = e => { state.breed = e.target.value; autoWeight(); };
 $('weightRange').onchange = e => {
-  state.weight = e.target.value; updatePetFlow();
+  state.weight = e.target.value; state.weightConfirmed = false; updatePetFlow();
   const u = getUrn(state.urnId);
   if (!u || !u.prices[state.weight]) state.urnId = null;
   renderUrns(); applyServiceUI();
 };
 $('manualWeightBtn').onclick = () => { $('weightRange').focus(); };
+$('confirmWeightBtn').onclick = () => { if (!state.weight) return; state.weightConfirmed = true; updatePetFlow(); applyServiceUI(); };
 $('next2').onclick = () => goTo(isCom() ? 4 : 3);
 document.querySelectorAll('[data-frame]').forEach(x => x.onclick = () => { document.querySelectorAll('[data-frame]').forEach(y => y.classList.remove('selected')); x.classList.add('selected'); state.frame = x.dataset.frame; });
 document.querySelectorAll('[data-color]').forEach(x => x.onclick = () => { document.querySelectorAll('[data-color]').forEach(y => y.classList.remove('selected')); x.classList.add('selected'); state.color = x.dataset.color; });
