@@ -178,7 +178,7 @@ function updatePetFlow() {
   revealStepField('breedField', state.species === 'perro'); revealStepField('catBreedField', state.species === 'gato'); revealStepField('otherSpeciesField', state.species === 'otro');
   revealStepField('weightField', !!state.species && ready);
   revealStepField('manualWeightAction', !!(breedSize[state.breed] || catSize[state.breed]));
-  revealStepField('urnPickerWrap', !!state.weight && !!state.species && ready);
+  revealStepField('urnPickerWrap', !isCom() && !!state.weight && !!state.species && ready);
 }
 function autoWeight() {
   const s = state.species === 'perro' ? breedSize[state.breed] : state.species === 'gato' ? catSize[state.breed] : null;
