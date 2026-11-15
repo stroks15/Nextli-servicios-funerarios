@@ -245,7 +245,7 @@ function calcBase() {
   return (u && u.prices[state.weight]) || 0;
 }
 function extraPrice(id) { return getExtra(id).price; }
-function total() { return calcBase() + INV.extras().reduce((sum, x) => sum + extraQty(x.id) * x.price, 0); }
+function total() { return calcBase() + (isCom() ? 0 : INV.extras().reduce((sum, x) => sum + extraQty(x.id) * x.price, 0)); }
 function updateTotal() { $('runningTotal3').textContent = 'Total: ' + money(total()) + ' MXN'; updatePayNote(); }
 function extrasList() {
   if (isCom()) return [];
@@ -397,7 +397,7 @@ $('workerButton').addEventListener('dblclick', e => e.preventDefault());
 document.querySelectorAll('[data-service]').forEach(b => b.onclick = () => {
   document.querySelectorAll('[data-service]').forEach(x => x.classList.remove('selected'));
   b.classList.add('selected'); state.service = b.dataset.service;
-  if (isCom()) { state.plus = state.huella = state.cert = false; state.plusQty = state.huellaQty = state.certQty = 0; state.frame = state.color = ''; refreshExtraCards(); }
+  if (isCom()) { state.plus = state.huella = state.cert = false; state.plusQty = state.huellaQty = state.certQty = 0; state.extraQuantities = {}; state.frame = state.color = ''; refreshExtraCards(); }
   applyServiceUI(); renderUrns(); goTo(2);
 });
 document.querySelectorAll('[data-wa-text]').forEach(b => b.onclick = () => window.open('https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(b.dataset.waText), '_blank'));
