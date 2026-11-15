@@ -161,7 +161,7 @@ function selectUrn(id) {
 /* ---------- Servicio comunitario: sin urna ---------- */
 function applyServiceUI() {
   const com = isCom();
-  $('urnPickerWrap').style.display = com ? 'none' : '';
+  $('urnPickerWrap').style.display = (com || !state.weight) ? 'none' : '';
   const note = $('comNote');
   if (com) {
     const p = state.weight && comPrice()[state.weight];
