@@ -245,7 +245,13 @@
     const coat = palette[rawColor] || (/(blanco|crema|marfil)/.test(rawColor) ? '#F2E8D5' : /(negro|oscuro)/.test(rawColor) ? '#383838' : /(gris|plata)/.test(rawColor) ? '#99999B' : /(café|cafe|chocolate)/.test(rawColor) ? '#6F4E37' : /(rojo|naranja|canela)/.test(rawColor) ? '#B96F42' : '#B78B65');
     const dark = /(negro|oscuro)/.test(rawColor) ? '#171717' : /(blanco|crema|marfil)/.test(rawColor) ? '#B8AFA3' : '#49372C';
     const isCat = d.kind === 'gato';
+    const animal = String(d.otherSpecies || '').toLowerCase();
+    const isOther = d.kind !== 'perro' && d.kind !== 'gato';
+    const isBird = isOther && /(ave|pájaro|pajaro|canario|loro|periquito)/.test(animal);
+    const isRabbit = isOther && /(conejo|liebre)/.test(animal);
     const breed = String(d.breed || '').toLowerCase();
+    if (isBird) return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="240" height="240"><ellipse cx="60" cy="108" rx="30" ry="5" fill="#8B7658" opacity=".13"/><path d="M42 91 Q17 75 28 48 Q38 20 68 31 Q99 41 89 75 Q82 99 54 98Z" fill="' + coat + '" stroke="' + dark + '" stroke-width="3"/><path d="M45 67 Q58 38 82 52 Q91 66 75 84 Q58 95 45 67Z" fill="' + dark + '" opacity=".22"/><path d="M86 49 L108 57 L87 65Z" fill="#D99A37" stroke="' + dark + '" stroke-width="2"/><circle cx="74" cy="48" r="4" fill="#211D19"/><circle cx="75" cy="47" r="1.2" fill="#fff"/><path d="M42 91 L32 108 M64 96 L60 110" stroke="' + dark + '" stroke-width="3" stroke-linecap="round"/><path d="M32 59 Q12 46 17 30" fill="none" stroke="' + coat + '" stroke-width="7" stroke-linecap="round"/></svg>';
+    if (isRabbit) return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="240" height="240"><ellipse cx="60" cy="108" rx="31" ry="5" fill="#8B7658" opacity=".13"/><path d="M39 48 Q18 0 35 8 Q49 13 53 45 M68 45 Q70 0 86 8 Q101 16 80 52" fill="' + coat + '" stroke="' + dark + '" stroke-width="3"/><ellipse cx="60" cy="62" rx="35" ry="37" fill="' + coat + '" stroke="' + dark + '" stroke-width="3"/><ellipse cx="48" cy="59" rx="4" ry="5" fill="#25211D"/><ellipse cx="72" cy="59" rx="4" ry="5" fill="#25211D"/><ellipse cx="60" cy="77" rx="17" ry="12" fill="#F5EBDD"/><circle cx="60" cy="72" r="3" fill="#A96F70"/><path d="M60 75 Q53 84 48 80 M60 75 Q67 84 72 80" fill="none" stroke="' + dark + '" stroke-width="2" stroke-linecap="round"/><circle cx="91" cy="91" r="8" fill="#F5EBDD" stroke="' + dark + '" stroke-width="2"/></svg>';
     const upright = isCat || /husky|pastor alemán|chihuahueño|siamés|bengalí/.test(breed);
     const floppy = /beagle|cocker|labrador|golden|retriever|poodle|persa|ragdoll/.test(breed);
     const ears = isCat
