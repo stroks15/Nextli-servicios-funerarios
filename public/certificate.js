@@ -237,6 +237,50 @@
     pawMedallion(ctx, x1 - 36, REF_H / 2 - 2, gold, paper);
   }
 
+  // SVG vectorial parametrizado: especie, raza y color del compañero.
+  // El SVG conserva fondo transparente y se rasteriza en el canvas del certificado.
+  function petIllustrationSvg(d) {
+    const palette = { Miel:'#D4A373', Café:'#6F4E37', Negro:'#2B2B2B', Blanco:'#F8F9FA' };
+    const coat = palette[d.color] || '#B78B65';
+    const dark = d.color === 'Negro' ? '#171717' : d.color === 'Blanco' ? '#B8AFA3' : '#49372C';
+    const isCat = d.kind === 'gato';
+    const breed = String(d.breed || '').toLowerCase();
+    const upright = isCat || /husky|pastor alemán|chihuahueño|siamés|bengalí/.test(breed);
+    const floppy = /beagle|cocker|labrador|golden|retriever|poodle|persa|ragdoll/.test(breed);
+    const ears = isCat
+      ? '<path d="M34 47 L37 13 Q40 8 46 18 L55 38 M76 38 L85 17 Q92 8 94 20 L92 49" fill="' + coat + '" stroke="' + dark + '" stroke-width="3" stroke-linejoin="round"/>'
+      : upright
+        ? '<path d="M31 50 Q23 16 37 13 Q49 12 53 43 M72 43 Q78 12 91 14 Q103 18 91 54" fill="' + coat + '" stroke="' + dark + '" stroke-width="3" stroke-linejoin="round"/>'
+        : floppy
+          ? '<path d="M35 39 Q8 35 13 75 Q18 100 43 77 M78 39 Q105 32 99 73 Q94 99 71 77" fill="' + coat + '" stroke="' + dark + '" stroke-width="3" stroke-linejoin="round"/>'
+          : '<path d="M34 45 Q18 20 27 16 Q43 12 52 44 M73 44 Q82 12 98 17 Q104 24 89 48" fill="' + coat + '" stroke="' + dark + '" stroke-width="3" stroke-linejoin="round"/>';
+    const mask = /husky|siamés/.test(breed)
+      ? '<path d="M39 47 Q60 31 81 48 L75 78 Q60 91 45 78Z" fill="#F5EBDD" opacity=".9"/>'
+      : '';
+    const muzzle = isCat
+      ? '<path d="M48 68 Q60 58 72 68 Q69 81 60 81 Q51 81 48 68Z" fill="#F7E8DA"/><path d="M57 67 L63 67 L60 72Z" fill="#A96F70"/>'
+      : '<ellipse cx="60" cy="69" rx="19" ry="13" fill="#F5EBDD"/><ellipse cx="60" cy="65" rx="5" ry="3.5" fill="' + dark + '"/>';
+    const coatMark = /dálmata|dalmatian|bengalí/.test(breed)
+      ? '<g fill="' + dark + '"><circle cx="42" cy="54" r="4"/><circle cx="76" cy="55" r="4"/><circle cx="49" cy="81" r="3"/></g>'
+      : '';
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="240" height="240">'
+      + '<ellipse cx="60" cy="108" rx="34" ry="5" fill="#8B7658" opacity=".13"/>'
+      + '<path d="M39 84 Q24 81 25 99 Q25 105 42 103 L78 103 Q95 105 95 97 Q94 82 78 84Z" fill="' + coat + '" stroke="' + dark + '" stroke-width="3"/>'
+      + '<path d="M34 91 Q17 86 17 70 Q18 63 23 67 Q28 82 43 80" fill="none" stroke="' + dark + '" stroke-width="6" stroke-linecap="round"/>'
+      + ears
+      + '<ellipse cx="60" cy="57" rx="' + (isCat ? 31 : 34) + '" ry="35" fill="' + coat + '" stroke="' + dark + '" stroke-width="3"/>'
+      + mask + coatMark
+      + '<ellipse cx="47" cy="57" rx="4" ry="5" fill="#25211D"/><ellipse cx="73" cy="57" rx="4" ry="5" fill="#25211D"/>'
+      + '<circle cx="48" cy="55" r="1.4" fill="#fff"/><circle cx="74" cy="55" r="1.4" fill="#fff"/>'
+      + muzzle
+      + '<path d="M60 73 Q56 81 50 78 M60 73 Q64 81 70 78" fill="none" stroke="' + dark + '" stroke-width="2" stroke-linecap="round"/>'
+      + '<path d="M43 102 L42 110 M77 102 L78 110" stroke="' + dark + '" stroke-width="5" stroke-linecap="round"/>'
+      + '</svg>';
+  }
+  function petIllustrationData(d) {
+    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(petIllustrationSvg(d));
+  }
+
   /* ---------- Dibujo principal ---------- */
   /**
    * @param {Object} d  { name, kind, otherSpecies, breed, age, cremation, owner, date(YYYY-MM-DD), doctor:{name,title} }
@@ -248,11 +292,12 @@
     const assets = window.NEXTLI_ASSETS || {};
     const sealSrc = opts.sealSrc || assets.seal || '/images/cert-seal.png';
     const sigSrc = opts.signatureSrc || assets.sig || '';
-    const [seal, signature] = await Promise.all([
+    const [seal, signature, petPortrait] = await Promise.all([
       loadImage(sealSrc),
       sigSrc ? loadImage(sigSrc) : Promise.resolve(null),
+      loadImage(petIllustrationData(d)),
       ensureFonts()
-    ]).then(([sealImage, signatureImage]) => [sealImage, signatureImage]);
+    ]).then(([sealImage, signatureImage, portrait]) => [sealImage, signatureImage, portrait]);
 
     const cv = document.createElement('canvas');
     cv.width = W; cv.height = H;
@@ -296,8 +341,8 @@
     ctx.beginPath(); ctx.arc(px, py, 66, 0, Math.PI * 2); ctx.stroke();
     ctx.lineWidth = 1.6;
     ctx.beginPath(); ctx.arc(px, py, 57, 0, Math.PI * 2); ctx.stroke();
-    pawPath(ctx, px, py + 4, 1.0);
-    ctx.fillStyle = '#a87a22'; ctx.fill('nonzero');
+    if (petPortrait) ctx.drawImage(petPortrait, px - 51, py - 51, 102, 102);
+    else { pawPath(ctx, px, py + 4, 1.0); ctx.fillStyle = '#a87a22'; ctx.fill('nonzero'); }
 
     // Nombre + línea
     const nameCx = 612, nameMax = 420;
