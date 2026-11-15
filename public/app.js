@@ -14,7 +14,7 @@ const catSize = { Siamés: 'chico', Persa: 'chico', 'Maine Coon': 'mediano', Rag
 
 let workerMode = false, logoTaps = 0, workerUnlockArmed = false, workerUnlockTimer = null;
 const WORKER_UNLOCK_WINDOW = 3000;
-let state = { service: null, species: '', otherSpecies: '', breed: '', weight: '', weightConfirmed: false, urnId: null, plus: false, huella: false, cert: false, plusQty: 0, huellaQty: 0, certQty: 0, petColor: '', petColorOther: '', color: '', frame: '', paymentStatus: 'No pagado', paymentOther: '' };
+let state = { extraQuantities: {}, service: null, species: '', otherSpecies: '', breed: '', weight: '', weightConfirmed: false, urnId: null, plus: false, huella: false, cert: false, plusQty: 0, huellaQty: 0, certQty: 0, petColor: '', petColorOther: '', color: '', frame: '', paymentStatus: 'No pagado', paymentOther: '' };
 
 const $ = id => document.getElementById(id);
 const val = id => (($(id)?.value || '').trim() || '—');
@@ -207,22 +207,26 @@ function buildExtraCards() {
   });
   track.scrollLeft = left; extrasDirty = false;
 }
-function extraQty(id) { return Math.max(0, Math.floor(Number(state[id + 'Qty']) || 0)); }
+function extraQty(id) { return Math.max(0, Math.floor(Number(state.extraQuantities?.[id] ?? state[id + 'Qty']) || 0)); }
 function setExtraQty(id, qty) {
   const x = getExtra(id); if (!x || x.soldOut) { if (x && x.soldOut) INV.toast('Este detalle está agotado por ahora.'); return; }
-  state[id + 'Qty'] = Math.max(0, Math.min(99, Math.floor(Number(qty) || 0))); state[id] = state[id + 'Qty'] > 0;
+  const max = Number.isFinite(x.stock) ? Math.max(0, x.stock) : 99;
+  const next = Math.max(0, Math.min(max, 99, Math.floor(Number(qty) || 0)));
+  state.extraQuantities = state.extraQuantities || {}; state.extraQuantities[id] = next;
+  if (['plus','huella','cert'].includes(id)) state[id + 'Qty'] = next;
+  state[id] = next > 0;
   if (id === 'plus' && !state.plus) { state.frame = ''; state.color = ''; document.querySelectorAll('[data-frame],[data-color]').forEach(y => y.classList.remove('selected')); }
   refreshExtraCards(); updateTotal();
 }
 function changeExtraQty(id, delta) { setExtraQty(id, extraQty(id) + delta); }
 function refreshExtraCards() {
   INV.extras().forEach(x => {
-    if (x.soldOut && extraQty(x.id)) { state[x.id + 'Qty'] = 0; state[x.id] = false; }
-    const qty = extraQty(x.id), c = $('extrasTrack').querySelector(`[data-id="${x.id}"]`); if (!c) return;
+    if (x.soldOut && extraQty(x.id)) { state.extraQuantities[x.id] = 0; if (['plus','huella','cert'].includes(x.id)) state[x.id + 'Qty'] = 0; state[x.id] = false; }
+    const qty = extraQty(x.id), c = [...$('extrasTrack').querySelectorAll('.pcard')].find(el => el.dataset.id === x.id); if (!c) return;
     c.classList.toggle('added', qty > 0); c.classList.toggle('soldout', x.soldOut); c.querySelector('.pcard-badge').hidden = !x.soldOut;
     c.querySelector('.pcard-cta').textContent = qty ? 'Agregado ✓' : 'Agregar';
     const out = c.querySelector('[data-qty-value]'); if (out) out.textContent = String(qty);
-    c.querySelectorAll('[data-qty-change]').forEach(b => b.disabled = x.soldOut || (b.dataset.qtyChange === '-1' && qty === 0));
+    c.querySelectorAll('[data-qty-change]').forEach(b => b.disabled = x.soldOut || (b.dataset.qtyChange === '-1' && qty === 0) || (b.dataset.qtyChange === '1' && Number.isFinite(x.stock) && qty >= x.stock));
     c.setAttribute('aria-pressed', qty > 0 ? 'true' : 'false');
   });
   $('frameWrap').style.display = state.plus ? 'block' : 'none'; $('colorWrap').style.display = state.plus ? 'block' : 'none';
@@ -241,11 +245,11 @@ function calcBase() {
   return (u && u.prices[state.weight]) || 0;
 }
 function extraPrice(id) { return getExtra(id).price; }
-function total() { return calcBase() + ['plus','huella','cert'].reduce((sum, id) => sum + extraQty(id) * extraPrice(id), 0); }
+function total() { return calcBase() + (isCom() ? 0 : INV.extras().reduce((sum, x) => sum + extraQty(x.id) * x.price, 0)); }
 function updateTotal() { $('runningTotal3').textContent = 'Total: ' + money(total()) + ' MXN'; updatePayNote(); }
 function extrasList() {
   if (isCom()) return [];
-  return [...['plus','huella','cert'].filter(id => extraQty(id) > 0).map(id => `${extraQty(id)}x ${getExtra(id).name} (+${money(extraQty(id) * extraPrice(id))} MXN)`), state.plus && state.frame ? `Marco: ${state.frame}` : null, state.plus && state.color ? `Vinilo: ${state.color}` : null].filter(Boolean);
+  return [...INV.extras().filter(x => extraQty(x.id) > 0).map(x => `${extraQty(x.id)}x ${x.name} (+${money(extraQty(x.id) * x.price)} MXN)`), state.plus && state.frame ? `Marco: ${state.frame}` : null, state.plus && state.color ? `Vinilo: ${state.color}` : null].filter(Boolean);
 }
 function updatePriceLabels() {
   const all = getUrns().filter(u => !u.soldOut).flatMap(u => Object.values(u.prices));
@@ -393,7 +397,7 @@ $('workerButton').addEventListener('dblclick', e => e.preventDefault());
 document.querySelectorAll('[data-service]').forEach(b => b.onclick = () => {
   document.querySelectorAll('[data-service]').forEach(x => x.classList.remove('selected'));
   b.classList.add('selected'); state.service = b.dataset.service;
-  if (isCom()) { state.plus = state.huella = state.cert = false; state.plusQty = state.huellaQty = state.certQty = 0; state.frame = state.color = ''; refreshExtraCards(); }
+  if (isCom()) { state.plus = state.huella = state.cert = false; state.plusQty = state.huellaQty = state.certQty = 0; state.extraQuantities = {}; state.frame = state.color = ''; refreshExtraCards(); }
   applyServiceUI(); renderUrns(); goTo(2);
 });
 document.querySelectorAll('[data-wa-text]').forEach(b => b.onclick = () => window.open('https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(b.dataset.waText), '_blank'));

@@ -175,3 +175,20 @@ body.worker-mode{padding-bottom:84px}
 
 /* Botones de la vista previa del certificado (fondo claro) */
 .certificate-preview-actions .btn-outline{color:var(--navy);border-color:rgba(11,25,44,.4);background:transparent}
+
+/* ---------- Editor de artículos y acciones del inventario ---------- */
+.nx-inventory-actions{display:flex;gap:10px;position:sticky;top:-12px;z-index:4;background:var(--cream);padding:4px 0 12px}
+.nx-inventory-actions .nx-btn{flex:1;min-height:46px}
+.adm-row-actions{display:flex;flex-direction:column;gap:6px;align-items:stretch}
+.adm-row-actions .nx-btn{min-height:36px;padding:0 10px;font-size:11px}
+.nx-item-editor{width:min(620px,100%);max-height:94vh;overflow:auto}
+.nx-editor-form{padding:14px 18px 20px;overflow:auto}
+.nx-editor-form .field{margin:8px 0}
+.nx-editor-form input:not([type=checkbox]),.nx-editor-form textarea{width:100%;min-height:44px;border:1px solid #d8cfb4;border-radius:10px;padding:10px 12px;font:14px Poppins,sans-serif;background:#fff}
+.nx-editor-form textarea{min-height:76px}
+.nx-size-editor{display:grid;gap:8px;margin-top:10px}
+.nx-size-option{display:grid;grid-template-columns:22px minmax(100px,1fr) minmax(100px,140px);align-items:center;gap:8px;padding:9px;background:#fff;border:1px solid #e7e0cd;border-radius:10px;font-size:12px}
+.nx-size-option input[type=number]{min-height:38px}
+.nx-editor-active{display:flex;align-items:center;gap:10px;padding:10px 0;font-size:13px}
+.nx-editor-active input{width:20px;height:20px}
+@media(max-width:520px){.adm-row-actions{width:100%;display:grid;grid-template-columns:1fr 1fr}.adm-row-actions .adm-stock{grid-column:1/-1;width:100%}.nx-size-option{grid-template-columns:22px 1fr 110px}}
