@@ -228,7 +228,12 @@
       return key;
     }
     const bucket = kind === 'urn' ? over.urns : over.extras;
-    bucket[id] = Object.assign({}, bucket[id] || {}, data);
+    const patch = Object.assign({}, data);
+    if (kind === 'urn') {
+      const base = BASE_URNS.find(item => item.id === id);
+      if (base) patch.prices = Object.fromEntries(SIZES.map(([key]) => [key, Object.prototype.hasOwnProperty.call(data.prices || {}, key) ? data.prices[key] : null]));
+    }
+    bucket[id] = Object.assign({}, bucket[id] || {}, patch);
     if (save()) emit();
     return id;
   }
@@ -242,6 +247,14 @@
   function com() { return Object.assign({}, BASE_COM, Object.fromEntries(Object.entries(over.com).filter(([, v]) => v > 0))); }
 
   function patchUrn(id, patch) {
+    if (over.customUrns && over.customUrns[id]) {
+      const cur = over.customUrns[id];
+      if ('soldOut' in patch) cur.soldOut = !!patch.soldOut;
+      if ('img' in patch) cur.img = patch.img || cur.defaultImg || '';
+      if (patch.prices) cur.prices = Object.assign({}, cur.prices || {}, patch.prices);
+      if (save()) emit();
+      return;
+    }
     const cur = over.urns[id] || (over.urns[id] = {});
     if ('soldOut' in patch) { if (patch.soldOut) cur.soldOut = true; else delete cur.soldOut; }
     if ('img' in patch) { if (patch.img) cur.img = patch.img; else delete cur.img; }
@@ -260,6 +273,15 @@
     if (save()) emit();
   }
   function patchExtra(id, patch) {
+    if (over.customExtras && over.customExtras[id]) {
+      const cur = over.customExtras[id];
+      if ('soldOut' in patch) cur.soldOut = !!patch.soldOut;
+      if ('img' in patch) cur.img = patch.img || cur.defaultImg || '';
+      if ('price' in patch && patch.price > 0) cur.price = patch.price;
+      if ('stock' in patch) cur.stock = patch.stock;
+      if (save()) emit();
+      return;
+    }
     const cur = over.extras[id] || (over.extras[id] = {});
     const base = BASE_EXTRAS.find(x => x.id === id) || { price: 0 };
     if ('soldOut' in patch) { if (patch.soldOut) cur.soldOut = true; else delete cur.soldOut; }
