@@ -7,7 +7,6 @@ const INV = window.NextliInventory;
 const CERT = window.NextliCertificate;
 const IMAGE_BASE = CFG.IMAGE_BASE || 'https://nextli-personaliza-despedida.vercel.app/images/';
 const WA_NUMBER = CFG.WA_NUMBER || '525521889698';
-const NEXTLI_GROUP = CFG.GROUP_URL || 'https://chat.whatsapp.com/KBc1dBIEJQHCoBTmrG96mi?s=cl&p=a&mlu=4&ilr=4';
 
 const SIZE_LABEL = { chico: 'Chico (0–10 kg)', mediano: 'Mediano (11–25 kg)', grande: 'Grande (26–45 kg)', xl: 'Extra grande (+45 kg)' };
 const breedSize = { Chihuahueño: 'chico', Poodle: 'chico', Pug: 'chico', Schnauzer: 'chico', Yorkshire: 'chico', Beagle: 'chico', Bulldog: 'mediano', Cocker: 'mediano', 'Golden Retriever': 'grande', Labrador: 'grande', 'Pastor Alemán': 'grande', 'Gran Danés': 'xl', Husky: 'grande' };
@@ -296,7 +295,7 @@ function buildMessage(audience) {
   if (audience === 'grupo') {
     const p = paymentInfo();
     const lines = [
-      '*🐾 NUEVA ORDEN — GRUPO NEXTLI*',
+      '*🐾 NUEVA ORDEN — NEXTLI*',
       `_Capturada en Modo Trabajador · ${nowStamp()}_`,
       '------------------------------',
       '*SERVICIO*',
@@ -440,40 +439,18 @@ $('useMyLocationBtn').onclick = () => {
   }, () => status.textContent = 'Permiso de ubicación no disponible. Escribe la dirección manualmente.', { enableHighAccuracy: true, timeout: 10000 });
 };
 
-/* ---------- Envío al Grupo NEXTLI (Modo Trabajador) ----------
-   WhatsApp no deja prellenar texto en el enlace de un grupo. Por eso:
-   1) se arma el mensaje COMPLETO del trabajador (incluye pago y saldo),
-   2) se copia al portapapeles y se muestra para revisarlo,
-   3) "Copiar y abrir Grupo" lo copia otra vez y abre el grupo para pegarlo.
-   "Compartir…" usa el menú nativo del teléfono con el texto ya cargado. */
-async function copyText(text) {
-  try { if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(text); return true; } } catch (e) { /* respaldo */ }
-  try {
-    const ta = $('groupMsg'); const prevHidden = $('groupSheet').hidden;
-    if (!prevHidden) { ta.focus(); ta.select(); ta.setSelectionRange(0, ta.value.length); const ok = document.execCommand('copy'); ta.setSelectionRange(0, 0); return ok; }
-  } catch (e) { /* nada */ }
-  return false;
-}
-function closeGroupSheet() { $('groupSheet').hidden = true; }
+/* ---------- Envío directo a WhatsApp NEXTLI (Modo Trabajador) ----------
+   Usa el número de contacto configurado en NEXTLI_CONFIG / Supabase.
+   El mensaje incluye los datos completos de la orden y el estado del pago. */
 $('sendGroupWa').onclick = () => {
   if (!workerMode) return;
-  if (!requiredOk()) { alert('Completa primero todos los datos obligatorios para enviar la orden al grupo.'); return; }
-  const ta = $('groupMsg'); ta.value = buildMessage('grupo');
-  $('groupCopied').hidden = true; $('groupShare').hidden = !navigator.share;
-  $('groupSheet').hidden = false;
-  copyText(ta.value).then(ok => { $('groupCopied').hidden = !ok; });
+  if (!requiredOk()) { alert('Completa primero todos los datos obligatorios para enviar la orden a NEXTLI.'); return; }
+  const phone = normalizePhone(WA_NUMBER);
+  if (!/^\d{11,15}$/.test(phone)) { alert('El número de WhatsApp de NEXTLI no está configurado correctamente.'); return; }
+  const url = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(buildMessage('grupo'));
+  const opened = window.open(url, '_blank', 'noopener,noreferrer');
+  if (!opened) window.location.href = url;
 };
-$('groupCopy').onclick = async () => { const ok = await copyText($('groupMsg').value); $('groupCopied').hidden = !ok; if (!ok) INV.toast('No se pudo copiar. Mantén presionado el texto y elige “Copiar”.'); };
-$('groupOpen').onclick = () => {
-  const text = $('groupMsg').value;
-  const p = copyText(text);
-  const w = window.open(NEXTLI_GROUP, '_blank');
-  if (!w) window.location.href = NEXTLI_GROUP;
-  p.then(ok => { $('groupCopied').hidden = !ok; });
-};
-$('groupShare').onclick = async () => { try { await navigator.share({ text: $('groupMsg').value }); } catch (e) { /* cancelado */ } };
-$('groupClose').onclick = closeGroupSheet;
-$('groupSheet').addEventListener('mousedown', e => { if (e.target.id === 'groupSheet') closeGroupSheet(); });
 
 $('sendClientWa').onclick = () => {
   if (!workerMode) return;
