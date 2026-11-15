@@ -284,8 +284,65 @@
       + '<path d="M43 102 L42 110 M77 102 L78 110" stroke="' + dark + '" stroke-width="5" stroke-linecap="round"/>'
       + '</svg>';
   }
-  function petIllustrationData(d) {
+  // Genera una ilustración fotorrealista con IA. Se cachea en IndexedDB
+  // para no volver a pagar una generación al reimprimir el mismo certificado.
+  const PET_ART_DB = 'nextli-pet-art-v1';
+  function petArtKey(d) {
+    return [d.kind, d.otherSpecies || '', d.breed || '', d.color || ''].join('|')
+      .normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().trim();
+  }
+  function petArtCache(mode, key, value) {
+    return new Promise((resolve, reject) => {
+      if (!window.indexedDB) return resolve(null);
+      const open = indexedDB.open(PET_ART_DB, 1);
+      open.onupgradeneeded = () => open.result.createObjectStore('images');
+      open.onerror = () => reject(open.error);
+      open.onsuccess = () => {
+        const db = open.result;
+        const tx = db.transaction('images', mode);
+        const store = tx.objectStore('images');
+        const req = mode === 'readonly' ? store.get(key) : store.put(value, key);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => reject(req.error);
+        tx.oncomplete = () => db.close();
+      };
+    });
+  }
+  function petIllustrationDataFallback(d) {
     return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(petIllustrationSvg(d));
+  }
+  async function petIllustrationData(d) {
+    const key = petArtKey(d);
+    try {
+      const cached = await petArtCache('readonly', key);
+      if (cached) return cached;
+    } catch (_) { /* caché opcional */ }
+
+    const species = d.kind === 'perro' ? 'perro' : d.kind === 'gato' ? 'gato' : (d.otherSpecies || 'animal');
+    const breed = String(d.breed || 'mestizo');
+    const color = String(d.color || 'color natural');
+    const prompt = [
+      'Create one premium, highly photorealistic studio portrait of a real living animal for a memorial certificate.',
+      'Subject: ' + species + ', exact breed: ' + breed + ', coat color and pattern: ' + color + '.',
+      'The breed must be visually unmistakable: correct head shape, muzzle, ears, body proportions, leg length, coat length, fur texture and breed-specific markings.',
+      'Show the entire animal standing naturally in a gentle three-quarter side view, all four paws and tail visible, centered, elegant calm expression.',
+      'Faithfully apply the supplied coat color. Do not invent a different color or markings. Natural realistic eyes, anatomically correct paws, detailed individual fur strands.',
+      'Isolated subject on a fully transparent background, no floor, no shadow, no props, no collar, no clothing, no text, no border, no frame, no watermark.',
+      'Professional high-end animal photography, soft even studio lighting, realistic proportions, crisp detail. Square composition with generous transparent padding.'
+    ].join(' ');
+    const response = await fetch('/api/generate-pet-illustration', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ species, breed, color, prompt })
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error || 'No se pudo generar la ilustración realista.');
+    }
+    const result = await response.json();
+    if (!result.image) throw new Error('El generador no devolvió una imagen.');
+    try { await petArtCache('readwrite', key, result.image); } catch (_) { /* caché opcional */ }
+    return result.image;
   }
 
   /* ---------- Dibujo principal ---------- */
@@ -299,12 +356,23 @@
     const assets = window.NEXTLI_ASSETS || {};
     const sealSrc = opts.sealSrc || assets.seal || '/images/cert-seal.png';
     const sigSrc = opts.signatureSrc || assets.sig || '';
-    const [seal, signature, petPortrait] = await Promise.all([
+    let petPortrait = null;
+    try {
+      const petArt = await petIllustrationData(d);
+      petPortrait = await loadImage(petArt);
+      window.NEXTLI_CERT_ART_STATUS = 'realista';
+    } catch (error) {
+      // Mantiene la emisión del documento, pero informa claramente que faltó IA.
+      window.NEXTLI_CERT_ART_STATUS = 'respaldo';
+      window.NEXTLI_CERT_ART_ERROR = error && error.message ? error.message : 'Error de generación';
+      console.warn('[NEXTLI] No se pudo crear la ilustración realista:', error);
+      petPortrait = await loadImage(petIllustrationDataFallback(d));
+    }
+    const [seal, signature] = await Promise.all([
       loadImage(sealSrc),
       sigSrc ? loadImage(sigSrc) : Promise.resolve(null),
-      loadImage(petIllustrationData(d)),
       ensureFonts()
-    ]).then(([sealImage, signatureImage, portrait]) => [sealImage, signatureImage, portrait]);
+    ]).then(([sealImage, signatureImage]) => [sealImage, signatureImage]);
 
     const cv = document.createElement('canvas');
     cv.width = W; cv.height = H;
