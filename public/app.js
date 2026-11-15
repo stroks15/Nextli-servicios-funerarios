@@ -495,7 +495,15 @@ async function generateCertificate() {
   overlay.classList.add('open'); overlay.setAttribute('aria-hidden', 'false'); ok.disabled = true;
   try {
     certCanvas = await CERT.render(certData(), { width: 2400 });
-    mount.innerHTML = ''; const wrap = document.createElement('div'); wrap.className = 'cert-canvas-wrap'; wrap.appendChild(certCanvas); mount.appendChild(wrap);
+    mount.innerHTML = '';
+    if (window.NEXTLI_CERT_ART_STATUS === 'respaldo') {
+      const warning = document.createElement('div');
+      warning.className = 'cert-art-warning';
+      warning.style.cssText = 'margin:12px;padding:12px 14px;border:1px solid #d6a64a;border-radius:10px;background:#fff8e8;color:#76521b;font:500 13px Poppins,sans-serif';
+      warning.textContent = 'No se pudo generar la ilustración realista con IA. Se muestra la ilustración de respaldo. ' + (window.NEXTLI_CERT_ART_ERROR || 'Revisa la configuración de AI Gateway en Vercel.');
+      mount.appendChild(warning);
+    }
+    const wrap = document.createElement('div'); wrap.className = 'cert-canvas-wrap'; wrap.appendChild(certCanvas); mount.appendChild(wrap);
   } catch (e) {
     console.error(e); mount.textContent = 'No se pudo preparar el certificado. Inténtalo de nuevo.';
   } finally { ok.disabled = false; }
