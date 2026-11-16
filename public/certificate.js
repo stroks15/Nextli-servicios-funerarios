@@ -320,14 +320,33 @@
       ? d.kind : (d.otherSpecies || d.kind || 'otro');
     const breed = d.breed && d.breed !== '—' ? d.breed : 'mestizo';
     const color = d.color || 'natural';
-    const base = [petImageSlug(species), petImageSlug(breed), petImageSlug(color)].join('__');
-    // Convención de archivos en public/images/mascotas:
-    // especie__raza__color.png (ej. perro__pastor_aleman__negro.png).
-    const candidates = [
-      '/images/mascotas/' + base + '.png',
-      '/images/mascotas/' + petImageSlug(species) + '__' + petImageSlug(color) + '.png'
+    const base = [petImageSlug(species), petImageSlug(breed)].join('__');
+    const palette = {
+      miel: ['#C98A43', '#80512D', '#F4D1A1'],
+      cafe: ['#80543B', '#493023', '#D5AE87'],
+      negro: ['#343238', '#17171A', '#77747A'],
+      blanco: ['#F1EDE5', '#B9B0A5', '#FFFFFF']
+    };
+    const normalizedColor = petImageSlug(color);
+    const tones = palette[normalizedColor] || (
+      /blanco|crema|marfil/.test(normalizedColor) ? palette.blanco :
+      /negro|oscuro/.test(normalizedColor) ? palette.negro :
+      /cafe|chocolate|marron/.test(normalizedColor) ? palette.cafe : palette.miel
+    );
+    const svgUrl = '/images/mascotas/' + base + '.svg';
+    try {
+      const response = await fetch(svgUrl, { cache: 'force-cache' });
+      if (response.ok) {
+        let svg = await response.text();
+        svg = svg.replace(/__COAT__/g, tones[0]).replace(/__DARK__/g, tones[1]).replace(/__LIGHT__/g, tones[2]);
+        return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+      }
+    } catch (_) { /* intenta recursos PNG heredados */ }
+    const legacy = [
+      '/images/mascotas/' + base + '__' + normalizedColor + '.png',
+      '/images/mascotas/' + petImageSlug(species) + '__' + normalizedColor + '.png'
     ];
-    for (const src of candidates) {
+    for (const src of legacy) {
       const image = await loadImage(src);
       if (image) return src;
     }
