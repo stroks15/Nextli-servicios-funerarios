@@ -311,8 +311,32 @@
   function petIllustrationDataFallback(d) {
     return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(petIllustrationSvg(d));
   }
+  function petImageSlug(value) {
+    return String(value || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '')
+      .toLowerCase().trim().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  }
+  async function petStaticIllustration(d) {
+    const species = d.kind === 'perro' || d.kind === 'gato'
+      ? d.kind : (d.otherSpecies || d.kind || 'otro');
+    const breed = d.breed && d.breed !== '—' ? d.breed : 'mestizo';
+    const color = d.color || 'natural';
+    const base = [petImageSlug(species), petImageSlug(breed), petImageSlug(color)].join('__');
+    // Convención de archivos en public/images/mascotas:
+    // especie__raza__color.png (ej. perro__pastor_aleman__negro.png).
+    const candidates = [
+      '/images/mascotas/' + base + '.png',
+      '/images/mascotas/' + petImageSlug(species) + '__' + petImageSlug(color) + '.png'
+    ];
+    for (const src of candidates) {
+      const image = await loadImage(src);
+      if (image) return src;
+    }
+    return null;
+  }
   async function petIllustrationData(d) {
     const key = petArtKey(d);
+    const staticImage = await petStaticIllustration(d);
+    if (staticImage) return staticImage;
     try {
       const cached = await petArtCache('readonly', key);
       if (cached) return cached;
