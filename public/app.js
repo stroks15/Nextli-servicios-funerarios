@@ -617,3 +617,89 @@ renderUrns(); renderExtras(); updatePriceLabels(); syncUrnControls(); updateTota
     });
   }
 })();
+
+
+/* ---------- Nota de Remisión (solo Modo Trabajador) ---------- */
+(function initRemissionNote() {
+  const openBtn = $('viewRemissionNote');
+  const overlay = $('remissionNoteOverlay');
+  const noteField = $('remissionNoteText');
+  const extraField = $('remissionExtraNotes');
+  if (!openBtn || !overlay || !noteField || !extraField) return;
+  function noteValue() {
+    let content = noteField.value.trim();
+    const extra = extraField.value.trim();
+    if (extra) content += (content ? '\n\n' : '') + 'NOTAS EXTRAS\n' + extra;
+    return content;
+  }
+  function buildRemissionNote() {
+    const urn = getUrn(state.urnId);
+    const pay = paymentInfo();
+    const lines = [
+      'NEXTLI · NOTA DE REMISIÓN',
+      'Fecha de elaboración: ' + nowStamp(),
+      '----------------------------------------',
+      'SERVICIO',
+      'Tipo: ' + (isCom() ? 'Cremación comunitaria' : 'Cremación individual'),
+      'Mascota: ' + val('petName'),
+      'Especie: ' + speciesLabel(),
+      'Raza: ' + (state.breed || '—'),
+      'Color: ' + petColorLabel(),
+      'Edad: ' + val('petAge'),
+      'Fecha de defunción: ' + fmtDate(),
+      'Urna: ' + (isCom() ? 'No aplica' : (urn?.name || '—')),
+      'Complementos: ' + (extrasList().join(', ') || 'Ninguno'),
+      '----------------------------------------',
+      'DATOS DEL CLIENTE',
+      'Nombre: ' + val('ownerName'),
+      'Teléfono: ' + val('ownerPhone'),
+      'Dirección: ' + val('ownerAddress'),
+      '----------------------------------------',
+      'COBRO (uso interno NEXTLI)',
+      'Total: ' + money(pay.total) + ' MXN',
+      'Estado del pago: ' + (pay.label || 'No pagado'),
+      'Abonado: ' + money(pay.paid) + ' MXN',
+      'Saldo pendiente: ' + money(pay.balance) + ' MXN',
+      '----------------------------------------',
+      'Recibido / entregado por: __________________________',
+      'Firma: ____________________________________________'
+    ];
+    return lines.join('\n');
+  }
+  function closeNote() { overlay.classList.remove('open'); overlay.setAttribute('aria-hidden','true'); }
+  function openNote() {
+    if (!workerMode) { alert('La Nota de Remisión está disponible únicamente en Modo Trabajador.'); return; }
+    noteField.value = buildRemissionNote();
+    extraField.value = '';
+    overlay.classList.add('open'); overlay.setAttribute('aria-hidden','false');
+    noteField.focus();
+  }
+  function downloadNote() {
+    if (!workerMode) return;
+    const content = noteValue();
+    if (!content) return;
+    const blob = new Blob([content], {type:'text/plain;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'Nota-de-Remision-' + safe(val('petName')) + '-' + safe(val('ownerName')) + '.txt';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 15000);
+  }
+  function sendNoteWhatsApp() {
+    if (!workerMode) return;
+    const phone = normalizePhone(val('ownerPhone'));
+    if (phone.length < 10) { alert('Revisa el teléfono del cliente antes de enviar la Nota de Remisión.'); return; }
+    const message = noteValue();
+    if (!message) return;
+    const url = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(message);
+    const opened = window.open(url, '_blank', 'noopener,noreferrer');
+    if (!opened) window.location.href = url;
+  }
+  openBtn.addEventListener('click', openNote);
+  $('closeRemissionNote').addEventListener('click', closeNote);
+  $('cancelRemissionNote').addEventListener('click', closeNote);
+  $('downloadRemissionNote').addEventListener('click', downloadNote);
+  $('whatsappRemissionNote').addEventListener('click', sendNoteWhatsApp);
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeNote(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && overlay.classList.contains('open')) closeNote(); });
+})();
