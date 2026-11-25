@@ -106,7 +106,7 @@ body.app-ready .welcome-screen{display:none}
 <div class="worker-only" id="workerPaymentWrap"><div class="field"><label>Estado del pago <span class="required-note">(solo personal NEXTLI)</span></label><select id="paymentStatus"><option>No pagado</option><option>Pago liquidado</option><option>Pago del 50%</option><option>Otro</option></select><input type="number" id="paymentOther" min="0" step="1" inputmode="numeric" placeholder="Monto abonado (MXN)" style="display:none;margin-top:8px"><small class="pay-note" id="payNote" style="display:block;margin-top:6px"></small></div></div>
 <div class="wizard-nav"><button class="btn btn-outline" data-back="3">Atrás</button><button class="btn btn-dark" id="next4">Ver resumen</button></div></section>
 
-<section class="step-panel" data-step="5"><h3 class="step-title">Paso 5 · Revisa y envía</h3><p class="step-note">Verifica que todo esté bien. Al enviarlo por WhatsApp, nuestro equipo te responderá con calidez y te guiará en lo que sigue.</p><div id="summaryBox"></div><div class="wizard-nav" id="step5Nav"><button class="btn btn-outline" data-back="4">Atrás</button><a class="btn btn-primary client-send" id="sendWa" target="_blank" rel="noopener">Enviar por WhatsApp</a><div class="worker-only" id="workerFinalActions"><button type="button" class="btn btn-dark" id="sendGroupWa">Enviar orden a WhatsApp NEXTLI</button><button type="button" class="btn btn-primary" id="sendClientWa">Enviar WhatsApp al Cliente</button><button type="button" class="btn btn-outline-dark" id="downloadCertificate">Descargar Certificado PDF</button></div></div></section>
+<section class="step-panel" data-step="5"><h3 class="step-title">Paso 5 · Revisa y envía</h3><p class="step-note">Verifica que todo esté bien. Al enviarlo por WhatsApp, nuestro equipo te responderá con calidez y te guiará en lo que sigue.</p><div id="summaryBox"></div><div class="wizard-nav" id="step5Nav"><button class="btn btn-outline" data-back="4">Atrás</button><a class="btn btn-primary client-send" id="sendWa" target="_blank" rel="noopener">Enviar por WhatsApp</a><div class="worker-only" id="workerFinalActions"><button type="button" class="btn btn-dark" id="sendGroupWa">Enviar orden a WhatsApp NEXTLI</button><button type="button" class="btn btn-primary" id="sendClientWa">Enviar WhatsApp al Cliente</button><button type="button" class="btn btn-outline-dark" id="downloadCertificate">Descargar Certificado PDF</button><button type="button" class="btn btn-outline-dark" id="viewRemissionNote" style="margin-top:8px">Ver Nota de Remisión</button></div></div></section>
 </div></div></main>
 
 <div class="worker-bar" id="workerBar"><div class="wb-status"><span>Modo trabajador</span><small id="adminStatus">Inventario bloqueado</small></div><div class="wb-actions"><button type="button" id="installAppBtn" class="gold">Instalar app</button><button type="button" id="adminLoginBtn">Iniciar sesión</button><button type="button" id="adminInventoryBtn" class="gold" hidden>Inventario</button><button type="button" id="adminLogoutBtn" hidden>Cerrar sesión</button></div></div>
@@ -123,6 +123,24 @@ body.app-ready .welcome-screen{display:none}
 </div>
 
 
+
+<div class="certificate-preview-overlay" id="remissionNoteOverlay" aria-hidden="true" style="z-index:5100">
+  <div class="certificate-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="remissionNoteTitle">
+    <div class="certificate-preview-head"><h3 id="remissionNoteTitle">Nota de Remisión NEXTLI</h3><button type="button" id="closeRemissionNote" aria-label="Cerrar">×</button></div>
+    <div class="certificate-preview-body" style="display:block;background:#fbf7ee">
+      <p style="margin:0 0 10px;color:#5b5646;font:13px/1.6 Poppins,sans-serif">Puedes editar directamente el contenido antes de descargarlo o enviarlo por WhatsApp.</p>
+      <label for="remissionNoteText" style="display:block;margin:8px 0;font:600 13px Poppins,sans-serif;color:#0b192c">Contenido de la nota</label>
+      <textarea id="remissionNoteText" style="width:100%;min-height:300px;padding:13px;border:1px solid #d7d1c2;border-radius:12px;background:#fff;color:#241f14;font:13px/1.7 Poppins,sans-serif;resize:vertical"></textarea>
+      <label for="remissionExtraNotes" style="display:block;margin:14px 0 8px;font:600 13px Poppins,sans-serif;color:#0b192c">Notas extras</label>
+      <textarea id="remissionExtraNotes" placeholder="Agrega observaciones, indicaciones o información adicional…" style="width:100%;min-height:85px;padding:13px;border:1px solid #d7d1c2;border-radius:12px;background:#fff;color:#241f14;font:13px/1.7 Poppins,sans-serif;resize:vertical"></textarea>
+    </div>
+    <div class="certificate-preview-actions" style="flex-wrap:wrap">
+      <button type="button" class="btn btn-outline" id="cancelRemissionNote">Cerrar</button>
+      <button type="button" class="btn btn-outline-dark" id="downloadRemissionNote">Descargar Nota</button>
+      <button type="button" class="btn btn-primary" id="whatsappRemissionNote">Enviar por WhatsApp</button>
+    </div>
+  </div>
+</div>
 <script src="/config.js"></script>
 <script src="/cert-assets.js"></script>
 <script src="/certificate.js"></script>
