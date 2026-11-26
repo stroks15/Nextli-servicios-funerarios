@@ -863,7 +863,8 @@ renderUrns(); renderExtras(); updatePriceLabels(); syncUrnControls(); updateTota
       const step=Math.min(5,Math.max(1,Number(data.step)||1));
       if(step===5)renderSummary();
       goTo(step);
-      if(data.appReady){document.body.classList.add('app-ready');const welcome=$('welcomeScreen');if(welcome){welcome.hidden=true;welcome.setAttribute('aria-hidden','true');}}
+      // No ocultar la bienvenida automáticamente al restaurar el progreso.
+      // El usuario debe pulsar Continuar para entrar al configurador.
       setStatus('✓ Se restauró tu progreso guardado');
     }catch(e){console.warn('NEXTLI: no se pudo restaurar el progreso',e);}
     finally{restoring=false;}
