@@ -16,6 +16,8 @@ let workerMode = false, logoTaps = 0, workerUnlockArmed = false, workerUnlockTim
 const WORKER_UNLOCK_WINDOW = 3000;
 let extraNoteText = '';
 let clientMessageOverride = '';
+let nextliNoteEditDraft = {};
+let nextliSavedNoteFolio = '';
 let state = { extraQuantities: {}, service: null, species: '', otherSpecies: '', breed: '', weight: '', weightConfirmed: false, urnId: null, plus: false, huella: false, cert: false, plusQty: 0, huellaQty: 0, certQty: 0, petColor: '', petColorOther: '', color: '', frame: '', paymentStatus: 'No pagado', paymentOther: '' };
 
 const $ = id => document.getElementById(id);
@@ -652,7 +654,7 @@ renderUrns(); renderExtras(); updatePriceLabels(); syncUrnControls(); updateTota
 (function initRemissionNote() {
   const openBtn = $('viewRemissionNote'), overlay = $('remissionNoteOverlay'), paper = $('remissionNotePaper');
   if (!openBtn || !overlay || !paper) return;
-  let folio = '';
+  let folio = nextliSavedNoteFolio || '';
   const escHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const dateParts = d => { const p = d.split('-'); return p.length === 3 ? p[2]+'/'+p[1]+'/'+p[0] : d; };
   function nextFolio() {
@@ -684,7 +686,7 @@ renderUrns(); renderExtras(); updatePriceLabels(); syncUrnControls(); updateTota
     const rows=noteRows(), pay=paymentInfo(), date=new Date();
     const dateText=date.toLocaleDateString('es-MX');
     const fmtMoney=v=>Number(v||0).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});
-    const serviceLines=rows.map(r=>`<tr><td class="rn-check"><span class="rn-checkmark">${r.checked?'☑':'□'}</span></td><td contenteditable="true" data-note-edit="desc">${escHtml(r.desc)}</td><td class="rn-money" contenteditable="true" data-note-edit="price">${r.price?('$ '+fmtMoney(r.unit||r.price)):'$ __________'}</td><td class="rn-money" contenteditable="true" data-note-edit="amount">${r.price?('$ '+fmtMoney(r.price)):'$ __________'}</td></tr>`).join('');
+    const serviceLines=rows.map((r,ri)=>`<tr><td class="rn-check"><span class="rn-checkmark">${r.checked?'☑':'□'}</span></td><td contenteditable="true" data-note-edit="row-${ri}-desc">${escHtml(r.desc)}</td><td class="rn-money" contenteditable="true" data-note-edit="row-${ri}-price">${r.price?('$ '+fmtMoney(r.unit||r.price)):'$ __________'}</td><td class="rn-money" contenteditable="true" data-note-edit="row-${ri}-amount">${r.price?('$ '+fmtMoney(r.price)):'$ __________'}</td></tr>`).join('');
     paper.innerHTML=`<article class="remission-sheet">
       <header class="rn-header">
         <div class="rn-brand"><img src="/images/nextli-logo.png" alt="Emblema NEXTLI"><strong>NEXTLI</strong><small>Cremación de Mascotas<br>con Amor en México</small></div>
@@ -703,6 +705,7 @@ renderUrns(); renderExtras(); updatePriceLabels(); syncUrnControls(); updateTota
       <div class="rn-signatures"><div>Firma de conformidad<br>del Tutor</div><div>Recibido / Entregado<br>por NEXTLI</div></div>
       <footer>“Pequeños detalles que guardan su huella por siempre.”</footer>
     </article>`;
+    paper.querySelectorAll('[data-note-edit]').forEach(el=>{const k=el.dataset.noteEdit;if(Object.prototype.hasOwnProperty.call(nextliNoteEditDraft,k))el.innerText=nextliNoteEditDraft[k];});
   }
   function noteText() {
     const clone=paper.querySelector('.remission-sheet'); if(!clone)return '';
@@ -712,7 +715,7 @@ renderUrns(); renderExtras(); updatePriceLabels(); syncUrnControls(); updateTota
   function closeNote(){overlay.classList.remove('open');overlay.setAttribute('aria-hidden','true');}
   function openNote(){
     if(!workerMode){alert('La Nota de Remisión está disponible únicamente en Modo Trabajador.');return;}
-    if(!folio)folio=nextFolio(); renderPaper();
+    if(!folio)folio=nextFolio(); nextliSavedNoteFolio=folio; renderPaper();
     overlay.classList.add('open');overlay.setAttribute('aria-hidden','false');
   }
   function downloadNote(){
@@ -782,4 +785,82 @@ renderUrns(); renderExtras(); updatePriceLabels(); syncUrnControls(); updateTota
   $('downloadRemissionNote').addEventListener('click',downloadNote);$('whatsappRemissionNote').addEventListener('click',shareNote);
   overlay.addEventListener('click',e=>{if(e.target===overlay)closeNote();});
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&overlay.classList.contains('open'))closeNote();});
+})();
+
+
+/* ---------- Guardado automático del progreso / reanudación ---------- */
+(function initProgressAutosave(){
+  const KEY='nextli-progress-v3';
+  const status=$('progressSaveStatus');
+  let saveTimer=null, restoring=false;
+  function setStatus(msg){if(status)status.textContent=msg;}
+  function capture(){
+    const fields={};
+    document.querySelectorAll('input[id],select[id],textarea[id]').forEach(el=>{
+      if(el.type==='checkbox'||el.type==='radio')fields[el.id]={checked:!!el.checked};
+      else fields[el.id]={value:el.value};
+    });
+    return {
+      version:3, savedAt:Date.now(), state:JSON.parse(JSON.stringify(state)),
+      fields, step:+document.querySelector('.step-panel.active')?.dataset.step||1,
+      appReady:document.body.classList.contains('app-ready'),
+      extraNoteText, clientMessageOverride, noteEdits:nextliNoteEditDraft,
+      noteFolio:nextliSavedNoteFolio
+    };
+  }
+  function saveNow(){
+    if(restoring)return;
+    try{localStorage.setItem(KEY,JSON.stringify(capture()));setStatus('✓ Progreso guardado automáticamente en este dispositivo');}
+    catch(e){setStatus('No se pudo guardar el progreso en este navegador');}
+  }
+  function scheduleSave(){
+    if(restoring)return;
+    setStatus('Guardando progreso…');
+    clearTimeout(saveTimer);saveTimer=setTimeout(saveNow,250);
+  }
+  function restore(){
+    let data;
+    try{data=JSON.parse(localStorage.getItem(KEY)||'null');}catch(e){return;}
+    if(!data||data.version!==3)return;
+    restoring=true;
+    try{
+      if(data.state&&typeof data.state==='object')Object.assign(state,data.state);
+      if(!state.extraQuantities||typeof state.extraQuantities!=='object')state.extraQuantities={};
+      Object.entries(data.fields||{}).forEach(([id,v])=>{
+        const el=$(id);if(!el||!v)return;
+        if(el.type==='checkbox'||el.type==='radio')el.checked=!!v.checked;
+        else if(typeof v.value==='string')el.value=v.value;
+      });
+      extraNoteText=typeof data.extraNoteText==='string'?data.extraNoteText:'';
+      clientMessageOverride=typeof data.clientMessageOverride==='string'?data.clientMessageOverride:'';
+      nextliNoteEditDraft=data.noteEdits&&typeof data.noteEdits==='object'?data.noteEdits:{};
+      nextliSavedNoteFolio=typeof data.noteFolio==='string'?data.noteFolio:'';
+      document.querySelectorAll('[data-service]').forEach(el=>el.classList.toggle('selected',el.dataset.service===state.service));
+      document.querySelectorAll('[data-frame]').forEach(el=>el.classList.toggle('selected',el.dataset.frame===state.frame));
+      document.querySelectorAll('[data-color]').forEach(el=>el.classList.toggle('selected',el.dataset.color===state.color));
+      $('paymentOther').style.display=state.paymentStatus==='Otro'?'block':'none';
+      $('petColorOther').style.display=state.petColor==='Otro'?'block':'none';
+      updatePetFlow();applyServiceUI();renderUrns();refreshExtraCards();renderExtras();updateTotal();updatePayNote();
+      const step=Math.min(5,Math.max(1,Number(data.step)||1));
+      if(step===5)renderSummary();
+      goTo(step);
+      if(data.appReady){document.body.classList.add('app-ready');const welcome=$('welcomeScreen');if(welcome){welcome.hidden=true;welcome.setAttribute('aria-hidden','true');}}
+      setStatus('✓ Se restauró tu progreso guardado');
+    }catch(e){console.warn('NEXTLI: no se pudo restaurar el progreso',e);}
+    finally{restoring=false;}
+  }
+  restore();
+  document.addEventListener('input',scheduleSave,true);
+  document.addEventListener('change',scheduleSave,true);
+  document.addEventListener('click',()=>setTimeout(scheduleSave,0),true);
+  document.addEventListener('input',e=>{
+    const el=e.target;
+    if(el&&el.matches&&el.matches('[data-note-edit]'))nextliNoteEditDraft[el.dataset.noteEdit]=el.innerText;
+  },true);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'){clearTimeout(saveTimer);saveNow();}else scheduleSave();});
+  window.addEventListener('pagehide',()=>{clearTimeout(saveTimer);saveNow();});
+  window.addEventListener('beforeunload',saveNow);
+  window.addEventListener('pageshow',()=>{if(!restoring)scheduleSave();});
+  // Persist whenever app state changes through direct UI selections.
+  document.querySelectorAll('[data-service],[data-frame],[data-color]').forEach(el=>el.addEventListener('click',()=>setTimeout(scheduleSave,0)));
 })();
