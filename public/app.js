@@ -889,4 +889,222 @@ renderUrns(); renderExtras(); updatePriceLabels(); syncUrnControls(); updateTota
   window.addEventListener('pageshow',()=>{if(!restoring)scheduleSave();});
   // Persist whenever app state changes through direct UI selections.
   document.querySelectorAll('[data-service],[data-frame],[data-color]').forEach(el=>el.addEventListener('click',()=>setTimeout(scheduleSave,0)));
+})();  async function downloadNote(){
+    if(!workerMode)return;
+    const sheet=paper.querySelector('.remission-sheet');if(!sheet)return;
+    const W=1240,H=1754,cv=document.createElement('canvas');cv.width=W;cv.height=H;
+    const ctx=cv.getContext('2d');
+    const C={navy:'#10233d',navy2:'#1d3857',gold:'#c6a34b',paper:'#fbf8f0',ink:'#18283b',muted:'#647184',sage:'#e4eee7',line:'#d8d4c9',white:'#fff'};
+    ctx.fillStyle=C.paper;ctx.fillRect(0,0,W,H);
+    const rounded=(x,y,w,h,r,fill,stroke)=>{ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();if(fill){ctx.fillStyle=fill;ctx.fill();}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=2;ctx.stroke();}};
+    const text=(str,x,y,size=25,color=C.ink,weight='400',align='left',font='Arial')=>{ctx.font=weight+' '+size+'px '+font;ctx.fillStyle=color;ctx.textAlign=align;ctx.textBaseline='top';ctx.fillText(String(str||''),x,y);};
+    const wrap=(str,maxW,size=22,weight='400')=>{ctx.font=weight+' '+size+'px Arial';const words=String(str||'').split(/\s+/),out=[];let line='';words.forEach(word=>{const test=line?line+' '+word:word;if(ctx.measureText(test).width>maxW&&line){out.push(line);line=word;}else line=test;});if(line)out.push(line);return out;};
+    const paragraph=(str,x,y,maxW,size=21,color=C.ink,lineH=29,weight='400',maxLines=5)=>{const lines=wrap(str,maxW,size,weight).slice(0,maxLines);lines.forEach((l,i)=>text(l,x,y+i*lineH,size,color,weight));return y+lines.length*lineH;};
+    const loadLogo=()=>new Promise(resolve=>{const im=new Image();im.onload=()=>resolve(im);im.onerror=()=>resolve(null);im.src='/images/nextli-logo.png';});
+    ctx.fillStyle=C.navy;ctx.fillRect(0,0,W,245);
+    ctx.fillStyle=C.gold;ctx.fillRect(0,239,W,6);
+    const logo=await loadLogo();
+    if(logo){const sc=Math.min(155/logo.width,165/logo.height),lw=logo.width*sc,lh=logo.height*sc;ctx.drawImage(logo,66,35,lw,lh);}
+    text('NEXTLI',245,52,42,'#e0c46f','700');
+    text('Cremación de Mascotas',245,104,24,C.white,'500');
+    text('con Amor en México',245,137,24,C.white,'500');
+    text('NOTA DE REMISIÓN',1160,58,39,C.white,'700','right');
+    text('Folio: '+noteField('folio'),1160,117,23,'#f1d88f','600','right');
+    text('Fecha: '+noteField('date'),1160,158,21,C.white,'400','right');
+    text('Tel / WhatsApp: 55 2188 9698  ·  José Bernardo Couto 226, Nezahualcóyotl, Méx.',W/2,267,18,C.muted,'400','center');
+    const drawInfoCard=(x,y,w,h,title,lines)=>{
+      rounded(x,y,w,h,18,C.white,C.line);
+      ctx.fillStyle=C.navy2;ctx.fillRect(x,y,w,48);
+      text(title,x+w/2,y+12,23,C.white,'700','center');
+      let cy=y+64;
+      lines.filter(Boolean).forEach(line=>{cy=paragraph(line,x+22,cy,w-44,20,C.ink,27,'400',2)+6;});
+    };
+    const owner=[noteField('owner'),noteField('phone'),noteField('address')].filter(v=>v&&v!=='—');
+    const pet=[noteField('pet'),noteField('species'),noteField('weight'),noteField('death')].filter(v=>v&&v!=='—');
+    drawInfoCard(64,305,542,232,'DATOS DEL TUTOR',owner.length?owner:['Por completar']);
+    drawInfoCard(634,305,542,232,'DATOS DEL COMPAÑERO',pet.length?pet:['Por completar']);
+    const tableRows=[...paper.querySelectorAll('.rn-table tbody tr')].map(tr=>{
+      const td=tr.querySelectorAll('td');if(td.length<4)return null;
+      const desc=(td[1].innerText||td[1].textContent||'').trim();
+      if(!desc)return null;
+      return {qty:(td[0].innerText||td[0].textContent||'1').trim(),desc,unit:(td[2].innerText||td[2].textContent||'').trim(),amount:(td[3].innerText||td[3].textContent||'').trim()};
+    }).filter(Boolean);
+    const tableX=64,tableY=570,tableW=1112,headerH=58,col=[90,642,190,190];
+    rounded(tableX,tableY,tableW,headerH,12,C.navy2,null);
+    const headers=['Cant.','Descripción del servicio / personalización','Precio unit.','Importe'];
+    let xx=tableX;headers.forEach((h,i)=>{text(h,xx+col[i]/2,tableY+18,18,C.white,'700','center');xx+=col[i];});
+    let y=tableY+headerH;
+    tableRows.forEach((r,i)=>{
+      const lines=wrap(r.desc,col[1]-34,20,'500');
+      const rowH=Math.max(62,lines.length*27+24);
+      ctx.fillStyle=i%2===0?C.white:'#f2efe6';ctx.fillRect(tableX,y,tableW,rowH);
+      ctx.strokeStyle=C.line;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(tableX,y+rowH);ctx.lineTo(tableX+tableW,y+rowH);ctx.stroke();
+      text(r.qty.replace(/\n/g,' '),tableX+col[0]/2,y+20,20,C.navy,'700','center');
+      lines.forEach((line,i)=>text(line,tableX+col[0]+18,y+16+i*27,19,C.ink,'500'));
+      text(r.unit,tableX+col[0]+col[1]+col[2]/2,y+20,18,C.ink,'500','center');
+      text(r.amount,tableX+col[0]+col[1]+col[2]+col[3]/2,y+20,18,C.ink,'700','center');
+      y+=rowH;
+    });
+    rounded(tableX,y,tableW,2,0,C.gold,null);
+    const bottomY=Math.min(y+30,1320);
+    const obsH=250,obsW=620,totW=460;
+    rounded(64,bottomY,obsW,obsH,16,C.white,C.line);
+    text('FRASE / OBSERVACIONES',86,bottomY+20,20,C.navy,'700');
+    paragraph(noteField('observations')||'—',86,bottomY+62,obsW-44,20,C.ink,29,'400',5);
+    rounded(710,bottomY,466,obsH,16,C.white,C.line);
+    text('RESUMEN',736,bottomY+20,20,C.navy,'700');
+    text('Subtotal',736,bottomY+65,20,C.muted);text(noteField('subtotal'),1148,bottomY+65,20,C.ink,'600','right');
+    text('Anticipo',736,bottomY+105,20,C.muted);text(noteField('deposit'),1148,bottomY+105,20,C.ink,'600','right');
+    ctx.fillStyle=C.sage;ctx.fillRect(711,bottomY+145,464,58);
+    text('SALDO',736,bottomY+161,21,C.navy,'700');text(noteField('total')+' MXN',1148,bottomY+159,24,C.navy,'700','right');
+    const signY=Math.min(bottomY+obsH+70,1570);
+    ctx.strokeStyle=C.navy;ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(120,signY);ctx.lineTo(520,signY);ctx.moveTo(720,signY);ctx.lineTo(1120,signY);ctx.stroke();
+    text('Firma de conformidad del Tutor',320,signY+14,17,C.muted,'400','center');
+    text('Recibido / Entregado por NEXTLI',920,signY+14,17,C.muted,'400','center');
+    text('“Pequeños detalles que guardan su huella por siempre.”',W/2,1680,22,C.navy,'italic 500','center','Georgia');
+    const blob=await CERT.toPdfBlob(cv,'Nota de Remisión NEXTLI');
+    const url=URL.createObjectURL(blob),a=document.createElement('a');
+    const safe=(val('petName')==='—'?'mascota':val('petName')).replace(/[^a-z0-9áéíóúñ_-]+/gi,'-');
+    a.href=url;a.download='Nota-Remision-NEXTLI-'+safe+'.pdf';document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),15000);
+  }
+  function noteField(key) {
+    const el=paper.querySelector('[data-note-edit="'+key+'"]');
+    return (el?.innerText||el?.textContent||'').trim();
+  }
+  function noteWhatsAppText() {
+    const rows=[...paper.querySelectorAll('.rn-table tbody tr')].map(tr=>{
+      const cells=tr.querySelectorAll('td');
+      if(cells.length<4)return '';
+      const checked=(cells[0].innerText||cells[0].textContent||'').includes('☑');
+      const description=(cells[1].innerText||cells[1].textContent||'').trim();
+      const unit=(cells[2].innerText||cells[2].textContent||'').trim();
+      const amount=(cells[3].innerText||cells[3].textContent||'').trim();
+      if(!description||/^_{3,}$/.test(description))return '';
+      return (checked?'☑ ':'□ ')+description+(amount&&amount!=='$ __________'?'\n   Importe: '+amount:'');
+    }).filter(Boolean);
+    const obs=noteField('observations');
+    return [
+      '*NOTA DE REMISIÓN · NEXTLI*',
+      'Folio: '+noteField('folio'),
+      'Fecha: '+noteField('date'),
+      '',
+      '*DATOS DEL TUTOR*',
+      noteField('owner'),
+      noteField('phone'),
+      noteField('address'),
+      '',
+      '*DATOS DEL COMPAÑERO*',
+      noteField('pet'),
+      noteField('species'),
+      noteField('weight'),
+      'Fecha de defunción: '+noteField('death'),
+      '',
+      '*SERVICIO / PERSONALIZACIÓN*',
+      ...rows,
+      '',
+      '*FRASE / OBSERVACIONES*',
+      obs||'—',
+      '',
+      'Subtotal: '+noteField('subtotal'),
+      'Anticipo: '+noteField('deposit'),
+      '*TOTAL A PAGAR: '+noteField('total')+' MXN*',
+      '',
+      'NEXTLI · Cremación de Mascotas con Amor en México'
+    ].join('\n');
+  }
+  function shareNote(){
+    if(!workerMode)return;
+    const phone=normalizePhone(val('ownerPhone'));
+    if(!/^\d{11,15}$/.test(phone)){alert('Revisa el teléfono del cliente.');return;}
+    const message=noteWhatsAppText();
+    const url='https://wa.me/'+phone+'?text='+encodeURIComponent(message);
+    const opened=window.open(url,'_blank','noopener,noreferrer');
+    if(!opened)window.location.href=url;
+  }
+  openBtn.addEventListener('click',openNote);
+  $('closeRemissionNote').addEventListener('click',closeNote);$('cancelRemissionNote').addEventListener('click',closeNote);
+  $('downloadRemissionNote').addEventListener('click',downloadNote);$('whatsappRemissionNote').addEventListener('click',shareNote);
+  overlay.addEventListener('click',e=>{if(e.target===overlay)closeNote();});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&overlay.classList.contains('open'))closeNote();});
+})();
+
+
+/* ---------- Guardado automático del progreso / reanudación ---------- */
+(function initProgressAutosave(){
+  const KEY='nextli-progress-v3';
+  const status=$('progressSaveStatus');
+  let saveTimer=null, restoring=false;
+  function setStatus(msg){if(status)status.textContent=msg;}
+  function capture(){
+    const fields={};
+    document.querySelectorAll('input[id],select[id],textarea[id]').forEach(el=>{
+      if(el.type==='checkbox'||el.type==='radio')fields[el.id]={checked:!!el.checked};
+      else fields[el.id]={value:el.value};
+    });
+    return {
+      version:3, savedAt:Date.now(), state:JSON.parse(JSON.stringify(state)),
+      fields, step:+document.querySelector('.step-panel.active')?.dataset.step||1,
+      appReady:document.body.classList.contains('app-ready'),
+      extraNoteText, clientMessageOverride, noteEdits:nextliNoteEditDraft,
+      noteFolio:nextliSavedNoteFolio
+    };
+  }
+  function saveNow(){
+    if(restoring)return;
+    try{localStorage.setItem(KEY,JSON.stringify(capture()));setStatus('✓ Progreso guardado automáticamente en este dispositivo');}
+    catch(e){setStatus('No se pudo guardar el progreso en este navegador');}
+  }
+  function scheduleSave(){
+    if(restoring)return;
+    setStatus('Guardando progreso…');
+    clearTimeout(saveTimer);saveTimer=setTimeout(saveNow,250);
+  }
+  function restore(){
+    let data;
+    try{data=JSON.parse(localStorage.getItem(KEY)||'null');}catch(e){return;}
+    if(!data||data.version!==3)return;
+    restoring=true;
+    try{
+      if(data.state&&typeof data.state==='object')Object.assign(state,data.state);
+      if(!state.extraQuantities||typeof state.extraQuantities!=='object')state.extraQuantities={};
+      Object.entries(data.fields||{}).forEach(([id,v])=>{
+        const el=$(id);if(!el||!v)return;
+        if(el.type==='checkbox'||el.type==='radio')el.checked=!!v.checked;
+        else if(typeof v.value==='string')el.value=v.value;
+      });
+      extraNoteText=typeof data.extraNoteText==='string'?data.extraNoteText:'';
+      clientMessageOverride=typeof data.clientMessageOverride==='string'?data.clientMessageOverride:'';
+      nextliNoteEditDraft=data.noteEdits&&typeof data.noteEdits==='object'?data.noteEdits:{};
+      nextliSavedNoteFolio=typeof data.noteFolio==='string'?data.noteFolio:'';
+      document.querySelectorAll('[data-service]').forEach(el=>el.classList.toggle('selected',el.dataset.service===state.service));
+      document.querySelectorAll('[data-frame]').forEach(el=>el.classList.toggle('selected',el.dataset.frame===state.frame));
+      document.querySelectorAll('[data-color]').forEach(el=>el.classList.toggle('selected',el.dataset.color===state.color));
+      $('paymentOther').style.display=state.paymentStatus==='Otro'?'block':'none';
+      $('petColorOther').style.display=state.petColor==='Otro'?'block':'none';
+      updatePetFlow();applyServiceUI();renderUrns();refreshExtraCards();renderExtras();updateTotal();updatePayNote();
+      const step=Math.min(5,Math.max(1,Number(data.step)||1));
+      if(step===5)renderSummary();
+      goTo(step);
+      // No ocultar la bienvenida automáticamente al restaurar el progreso.
+      // El usuario debe pulsar Continuar para entrar al configurador.
+      setStatus('✓ Se restauró tu progreso guardado');
+    }catch(e){console.warn('NEXTLI: no se pudo restaurar el progreso',e);}
+    finally{restoring=false;}
+  }
+  restore();
+  document.addEventListener('input',scheduleSave,true);
+  document.addEventListener('change',scheduleSave,true);
+  document.addEventListener('click',()=>setTimeout(scheduleSave,0),true);
+  document.addEventListener('input',e=>{
+    const el=e.target;
+    if(el&&el.matches&&el.matches('[data-note-edit]'))nextliNoteEditDraft[el.dataset.noteEdit]=el.innerText;
+  },true);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'){clearTimeout(saveTimer);saveNow();}else scheduleSave();});
+  window.addEventListener('pagehide',()=>{clearTimeout(saveTimer);saveNow();});
+  window.addEventListener('beforeunload',saveNow);
+  window.addEventListener('pageshow',()=>{if(!restoring)scheduleSave();});
+  // Persist whenever app state changes through direct UI selections.
+  document.querySelectorAll('[data-service],[data-frame],[data-color]').forEach(el=>el.addEventListener('click',()=>setTimeout(scheduleSave,0)));
 })();
