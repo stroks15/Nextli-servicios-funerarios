@@ -323,7 +323,7 @@ function buildMessage(audience) {
       `*Propietario:* ${val('ownerName')}`,
       `*Teléfono:* ${val('ownerPhone')}`,
       `*Dirección:* ${val('ownerAddress')}`,
-      ...(extraNoteText.trim() ? ['', '*NOTA EXTRA:*', extraNoteText.trim()] : [])
+      ...(noteExtra ? ['', '*NOTA EXTRA:*', noteExtra] : [])
     ];
     const ml = mapsLink(val('ownerAddress')); if (ml) lines.push(`*Mapa:* ${ml}`);
     lines.push('',
@@ -367,21 +367,25 @@ ${isCom() ? '' : `*Urna:* ${urn?.name || '—'}\n`}*Tamaño / peso:* ${SIZE_LABE
 function line(a, b) { return `<div class="summary-line"><span>${a}</span><b>${esc(b)}</b></div>`; }
 function renderSummary() {
   const urn = getUrn(state.urnId);
-  const extra = extraNoteText || '';
-  $('summaryBox').innerHTML = `<div class="summary-box"><h4>Resumen de tu solicitud</h4>${line('Servicio', isCom() ? 'Cremación Comunitaria' : 'Cremación Individual')}${line('Mascota', val('petName'))}${line('Especie / raza', speciesLabel() + (state.breed ? ' / ' + state.breed : ''))}${line('Color', petColorLabel())}${line('Tamaño / peso', SIZE_LABEL[state.weight] || '—')}${isCom() ? '' : line('Urna', urn?.name || '—')}${extrasList().map(x => line('Adicional', x)).join('')}${line('Propietario', val('ownerName'))}${line('Teléfono', val('ownerPhone'))}${line('Dirección', val('ownerAddress'))}${workerMode ? line('Pago', paymentLabel()) + line('Saldo pendiente', money(paymentInfo().balance) + ' MXN') : ''}<div class="summary-total"><span>Total estimado</span><span>${money(total())} MXN</span></div><div class="summary-extra"><label for="extraSummaryNote">Nota extra / observaciones (se incluirá en WhatsApp y en la Nota de Remisión)</label><textarea id="extraSummaryNote" rows="3" maxlength="1200" placeholder="Agrega indicaciones, observaciones o una nota especial…">${esc(extra)}</textarea></div><div class="summary-extra summary-message-edit"><label for="editableClientMessage">Mensaje de WhatsApp editable (se enviará con estos cambios)</label><textarea id="editableClientMessage" rows="8">${esc(buildMessage('cliente'))}</textarea></div></div>`;
-  const messageInput = $('editableClientMessage');
+  const extra = workerMode ? (extraNoteText || '') : '';
+  const workerTools = workerMode ? `<div class="worker-only remission-worker-tools">
+    <div class="summary-extra"><label for="extraSummaryNote">Nota extra / observaciones (se incluirá en el WhatsApp y en la Nota de Remisión)</label><textarea id="extraSummaryNote" rows="3" maxlength="1200" placeholder="Agrega indicaciones u observaciones…">${esc(extra)}</textarea></div>
+    <div class="summary-extra summary-message-edit"><label for="editableClientMessage">Mensaje de WhatsApp editable antes de enviarlo</label><textarea id="editableClientMessage" rows="8">${esc(buildMessage('cliente'))}</textarea></div>
+  </div>` : '';
+  $('summaryBox').innerHTML = `<div class="summary-box"><h4>Resumen de tu solicitud</h4>${line('Servicio', isCom() ? 'Cremación Comunitaria' : 'Cremación Individual')}${line('Mascota', val('petName'))}${line('Especie / raza', speciesLabel() + (state.breed ? ' / ' + state.breed : ''))}${line('Color', petColorLabel())}${line('Tamaño / peso', SIZE_LABEL[state.weight] || '—')}${isCom() ? '' : line('Urna', urn?.name || '—')}${extrasList().map(x => line('Adicional', x)).join('')}${line('Propietario', val('ownerName'))}${line('Teléfono', val('ownerPhone'))}${line('Dirección', val('ownerAddress'))}${workerMode ? line('Pago', paymentLabel()) + line('Abonado', money(paymentInfo().paid) + ' MXN') + line('Saldo pendiente', money(paymentInfo().balance) + ' MXN') : ''}<div class="summary-total"><span>Total estimado</span><span>${money(total())} MXN</span></div>${workerTools}</div>`;
+  const messageInput = workerMode ? $('editableClientMessage') : null;
   if (messageInput) messageInput.addEventListener('input', e => {
     clientMessageOverride = e.target.value;
     $('sendWa').href = 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(clientMessageOverride);
   });
-  const extraInput = $('extraSummaryNote');
+  const extraInput = workerMode ? $('extraSummaryNote') : null;
   if (extraInput) extraInput.addEventListener('input', e => {
     extraNoteText = e.target.value;
     clientMessageOverride = buildMessage('cliente');
     if ($('editableClientMessage')) $('editableClientMessage').value = clientMessageOverride;
     $('sendWa').href = 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(clientMessageOverride);
   });
-  $('sendWa').href = 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(clientMessageOverride || buildMessage('cliente'));
+  $('sendWa').href = 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(workerMode ? (clientMessageOverride || buildMessage('cliente')) : buildMessage('cliente'));
 }
 function requiredOk() {
   const ids = ['petName', 'petAge', 'petDate', 'ownerName', 'ownerPhone', 'ownerAddress'];
@@ -656,32 +660,47 @@ renderUrns(); renderExtras(); updatePriceLabels(); syncUrnControls(); updateTota
     return 'NX-'+key.replace('nextli_remision_','')+'-'+String(n).padStart(3,'0');
   }
   function noteRows() {
-    const urn = getUrn(state.urnId), ext = INV.extras();
-    const rows = [];
-    if (isCom()) rows.push({desc:'Cremación sin recuperación / Comunitaria',price:total(),qty:1,checked:true});
-    else {
-      const extrasTotal = ext.reduce((s,x)=>s+(Number(state.extraQuantities[x.id]||0)*Number(x.price||0)),0);
-      const urnPrice = Number(urn?.prices?.[state.weight]||0);
-      const base = Math.max(0,total()-extrasTotal-urnPrice);
-      rows.push({desc:'Cremación individual (recuperación de cenizas)',price:base,qty:1,checked:true});
-      if (extrasTotal) ext.forEach(x=>{const q=Number(state.extraQuantities[x.id]||0);if(q)rows.push({desc:x.name,price:Number(x.price||0)*q,qty:q,checked:true});});
-      if (urn) rows.push({desc:'Urna seleccionada: '+urn.name+(state.color?' · Vinilo '+state.color:''),price:urnPrice,qty:1,checked:true});
-    }
-    if (!rows.length) rows.push({desc:'Servicio NEXTLI',price:total(),qty:1,checked:true});
+    const urn = getUrn(state.urnId);
+    const extras = INV.extras();
+    const byId = id => extras.find(x => x.id === id);
+    const rowExtra = id => { const x=byId(id); const q=extraQty(id); return {desc:x?.name || id, price:Number(x?.price||0)*q, unit:Number(x?.price||0), qty:q, checked:q>0}; };
+    const rows = [
+      {desc:'Cremación Individual (100% cenizas, urna, placa, certificado, foto testigo)',price:0,unit:0,qty:1,checked:!isCom()},
+      {desc:'Cremación sin Recuperación / Comunitaria',price:0,unit:0,qty:1,checked:isCom()},
+      {desc:'Eutanasia Asistida (Clínica Salud Animal)',price:0,unit:0,qty:1,checked:false},
+      {...rowExtra('plus'),desc:'Paquete Plus — Homenaje Completo (Marco/acrílico, huella en aluminio, vinilo)',checked:!!state.plus},
+      {...rowExtra('huella'),desc:'Huella con pelo de mascota',checked:!!state.huella},
+      {...rowExtra('cert'),desc:'Certificado físico adicional',checked:!!state.cert},
+      {desc:'Urna seleccionada: '+(urn?.name||'________________')+' | Color vinilo: '+(state.color||'________')+' | ( ) Plateado  ( ) Blanco  ( ) Negro  ( ) Dorado',price:calcBase(),unit:calcBase(),qty:1,checked:!!urn}
+    ];
+    const used=['plus','huella','cert'];
+    extras.filter(x=>!used.includes(x.id)&&extraQty(x.id)>0).forEach(x=>{
+      const q=extraQty(x.id); rows.push({desc:x.name,price:Number(x.price||0)*q,unit:Number(x.price||0),qty:q,checked:true});
+    });
     return rows;
   }
   function renderPaper() {
     const rows=noteRows(), pay=paymentInfo(), date=new Date();
     const dateText=date.toLocaleDateString('es-MX');
-    const serviceLines=rows.map((r,i)=>`<tr><td class="rn-check"><span class="rn-checkmark">${r.checked?'☑':'□'}</span></td><td contenteditable="true" data-note-edit="desc">${escHtml(r.desc)}</td><td class="rn-money" contenteditable="true" data-note-edit="price">$ ${Number(r.price||0).toLocaleString('es-MX')}</td><td class="rn-money" contenteditable="true" data-note-edit="amount">$ ${Number(r.price||0).toLocaleString('es-MX')}</td></tr>`).join('');
-    const extraRows='<tr><td class="rn-check">□</td><td contenteditable="true" data-note-edit="desc">Personalización / observaciones de servicio</td><td contenteditable="true" class="rn-money" data-note-edit="price">—</td><td contenteditable="true" class="rn-money" data-note-edit="amount">—</td></tr>';
+    const fmtMoney=v=>Number(v||0).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const serviceLines=rows.map(r=>`<tr><td class="rn-check"><span class="rn-checkmark">${r.checked?'☑':'□'}</span></td><td contenteditable="true" data-note-edit="desc">${escHtml(r.desc)}</td><td class="rn-money" contenteditable="true" data-note-edit="price">${r.price?('$ '+fmtMoney(r.unit||r.price)):'$ __________'}</td><td class="rn-money" contenteditable="true" data-note-edit="amount">${r.price?('$ '+fmtMoney(r.price)):'$ __________'}</td></tr>`).join('');
     paper.innerHTML=`<article class="remission-sheet">
-      <header class="rn-header"><div class="rn-brand"><img src="/images/nextli-logo.png" alt="NEXTLI"><strong>NEXTLI</strong><small>Cremación de Mascotas<br>con Amor en México</small></div><div class="rn-title"><h2>NOTA DE REMISIÓN</h2><div>Folio N°: <span contenteditable="true" data-note-edit="folio">${escHtml(folio)}</span></div><div>Fecha: <span contenteditable="true" data-note-edit="date">${dateText}</span></div></div></header>
-      <div class="rn-contact">Tel / WhatsApp: 55 2188 9698 | José Bernardo Couto 226, México 2da Secc, 57620 Cd. Nezahualcóyotl, Méx.</div>
-      <div class="rn-two"><section><h3>Datos del Tutor</h3><p>Nombre completo: <b contenteditable="true" data-note-edit="owner">${escHtml(val('ownerName'))}</b></p><p>Teléfono / WhatsApp: <b contenteditable="true" data-note-edit="phone">${escHtml(val('ownerPhone'))}</b></p><p>Dirección: <b contenteditable="true" data-note-edit="address">${escHtml(val('ownerAddress'))}</b></p></section><section><h3>Datos del Compañero</h3><p>Nombre: <b contenteditable="true" data-note-edit="pet">${escHtml(val('petName'))}</b></p><p>Especie / Raza: <b contenteditable="true" data-note-edit="species">${escHtml(speciesLabel()+' / '+(state.breed||'—'))}</b></p><p>Peso aprox. (kg): <b contenteditable="true" data-note-edit="weight">${escHtml(SIZE_LABEL[state.weight]||'—')}</b></p><p>Fecha de defunción: <b contenteditable="true" data-note-edit="death">${escHtml(fmtDate())}</b></p></section></div>
-      <table class="rn-table"><thead><tr><th>Cant.</th><th>Descripción del Servicio / Personalización</th><th>Precio Unit.</th><th>Importe</th></tr></thead><tbody>${serviceLines}${extraRows}</tbody></table>
-      <div class="rn-bottom"><section class="rn-observations"><label>Frase de despedida / Observaciones:</label><div contenteditable="true" data-note-edit="observations" class="rn-lines">${escHtml([val('farewellPhrase')==='—'?'':val('farewellPhrase'),extraNoteText.trim()].filter(Boolean).join('\n'))}</div></section><section class="rn-totals"><p>Subtotal: <b contenteditable="true" data-note-edit="subtotal">$ ${total().toLocaleString('es-MX')}</b></p><p>Anticipo: <b contenteditable="true" data-note-edit="deposit">$ ${Number(pay.paid||0).toLocaleString('es-MX')}</b></p><strong>Total a pagar: <span contenteditable="true" data-note-edit="total">$ ${Number(pay.balance||total()).toLocaleString('es-MX')}</span> MXN</strong><p class="rn-payment">□ Efectivo &nbsp; □ Transferencia &nbsp; □ Tarjeta</p></section></div>
-      <div class="rn-signatures"><div>Firma de conformidad del Tutor</div><div>Recibido / Entregado por NEXTLI</div></div><footer>“Pequeños detalles que guardan su huella por siempre.”</footer>
+      <header class="rn-header">
+        <div class="rn-brand"><img src="/images/nextli-logo.png" alt="Emblema NEXTLI"><strong>NEXTLI</strong><small>Cremación de Mascotas<br>con Amor en México</small></div>
+        <div class="rn-title"><h2>NOTA DE REMISIÓN</h2><div>Folio N°: <span contenteditable="true" data-note-edit="folio">${escHtml(folio)}</span></div><div>Fecha: <span contenteditable="true" data-note-edit="date">${dateText}</span></div></div>
+      </header>
+      <div class="rn-contact">Tel / WhatsApp: 55 2188 9698 | Jorto 226, México 2da Secc, 57620 Cd. Nezahualcóyotl, Méx.</div>
+      <div class="rn-two">
+        <section><h3>Datos del Tutor</h3><p contenteditable="true" data-note-edit="owner">Nombre completo: ${escHtml(val('ownerName'))}</p><p contenteditable="true" data-note-edit="phone">Teléfono / WhatsApp: ${escHtml(val('ownerPhone'))}</p><p contenteditable="true" data-note-edit="address">Dirección de recolección / entrega: ${escHtml(val('ownerAddress'))}</p></section>
+        <section><h3>Datos del Compañero</h3><p contenteditable="true" data-note-edit="pet">Nombre de la mascota: ${escHtml(val('petName'))}</p><p contenteditable="true" data-note-edit="species">Especie / Raza: ${escHtml(speciesLabel()+' / '+(state.breed||'—'))}</p><p contenteditable="true" data-note-edit="weight">Peso aprox. (kg): ${escHtml(SIZE_LABEL[state.weight]||'—')}</p><p contenteditable="true" data-note-edit="death">Fecha de defunción: ${escHtml(fmtDate())}</p></section>
+      </div>
+      <table class="rn-table"><thead><tr><th>Cant.</th><th>Descripción del Servicio / Personalización</th><th>Precio Unit.</th><th>Importe</th></tr></thead><tbody>${serviceLines}<tr class="rn-blank"><td></td><td contenteditable="true" data-note-edit="blank">________________________________________<br>________________________________________</td><td contenteditable="true">$ ________</td><td contenteditable="true">$ ________</td></tr></tbody></table>
+      <div class="rn-bottom">
+        <section class="rn-observations"><label>Frase de despedida / Observaciones:</label><div contenteditable="true" data-note-edit="observations" class="rn-lines">${escHtml([val('farewellPhrase')==='—'?'':val('farewellPhrase'),extraNoteText.trim()].filter(Boolean).join('\n'))}</div></section>
+        <section class="rn-totals"><p>Subtotal: <b contenteditable="true" data-note-edit="subtotal">$ ${fmtMoney(total())}</b></p><p>Anticipo: <b contenteditable="true" data-note-edit="deposit">$ ${fmtMoney(pay.paid)}</b></p><strong>Total a pagar: <span contenteditable="true" data-note-edit="total">$ ${fmtMoney(pay.balance)}</span> MXN</strong><p class="rn-payment">□ Efectivo &nbsp; □ Transferencia &nbsp; □ Tarjeta</p></section>
+      </div>
+      <div class="rn-signatures"><div>Firma de conformidad<br>del Tutor</div><div>Recibido / Entregado<br>por NEXTLI</div></div>
+      <footer>“Pequeños detalles que guardan su huella por siempre.”</footer>
     </article>`;
   }
   function noteText() {
