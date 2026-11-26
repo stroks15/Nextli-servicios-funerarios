@@ -373,7 +373,7 @@ function renderSummary() {
   const extra = workerMode ? (extraNoteText || '') : '';
   const workerTools = workerMode ? `<div class="worker-only remission-worker-tools">
     <div class="summary-extra"><label for="extraSummaryNote">Nota extra / observaciones (se incluirá en el WhatsApp y en la Nota de Remisión)</label><textarea id="extraSummaryNote" rows="3" maxlength="1200" placeholder="Agrega indicaciones u observaciones…">${esc(extra)}</textarea></div>
-    <div class="summary-extra summary-message-edit"><label for="editableClientMessage">Mensaje de WhatsApp editable antes de enviarlo</label><textarea id="editableClientMessage" rows="8">${esc(buildMessage('cliente'))}</textarea></div>
+    <div class="summary-extra summary-message-edit"><label for="editableClientMessage">Mensaje de WhatsApp editable antes de enviarlo</label><textarea id="editableClientMessage" rows="8">${esc(clientMessageOverride || buildMessage('cliente'))}</textarea></div>
   </div>` : '';
   $('summaryBox').innerHTML = `<div class="summary-box"><h4>Resumen de tu solicitud</h4>${line('Servicio', isCom() ? 'Cremación Comunitaria' : 'Cremación Individual')}${line('Mascota', val('petName'))}${line('Especie / raza', speciesLabel() + (state.breed ? ' / ' + state.breed : ''))}${line('Color', petColorLabel())}${line('Tamaño / peso', SIZE_LABEL[state.weight] || '—')}${isCom() ? '' : line('Urna', urn?.name || '—')}${extrasList().map(x => line('Adicional', x)).join('')}${line('Propietario', val('ownerName'))}${line('Teléfono', val('ownerPhone'))}${line('Dirección', val('ownerAddress'))}${workerMode ? line('Pago', paymentLabel()) + line('Abonado', money(paymentInfo().paid) + ' MXN') + line('Saldo pendiente', money(paymentInfo().balance) + ' MXN') : ''}<div class="summary-total"><span>Total estimado</span><span>${money(total())} MXN</span></div>${workerTools}</div>`;
   const messageInput = workerMode ? $('editableClientMessage') : null;
@@ -403,6 +403,10 @@ function activateWorker() {
   $('workerPaymentWrap').style.display = 'block';
   workerUnlockArmed = false; logoTaps = 0; clearTimeout(workerUnlockTimer);
   updatePayNote();
+  if (+document.querySelector('.step-panel.active')?.dataset.step === 5) {
+    renderSummary();
+    if ($('editableClientMessage')) $('sendWa').href = 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(clientMessageOverride || buildMessage('cliente'));
+  }
 }
 $('nextliTrigger').onclick = () => {
   if (workerMode) return;
