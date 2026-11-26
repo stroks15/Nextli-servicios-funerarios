@@ -723,11 +723,59 @@ renderUrns(); renderExtras(); updatePriceLabels(); syncUrnControls(); updateTota
     const css=[...document.querySelectorAll('link[rel="stylesheet"]')].map(x=>'<link rel="stylesheet" href="'+x.href+'">').join('');
     win.document.open();win.document.write('<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Nota de Remisión NEXTLI</title>'+css+'<style>body{background:#fff!important;margin:0!important;padding:0!important}.remission-sheet{width:190mm!important;min-height:277mm!important;margin:0 auto!important;box-shadow:none!important;border:0!important}.remission-overlay,.certificate-preview-overlay{display:none!important}@page{size:A4;margin:10mm}</style></head><body>'+sheet.outerHTML+'<script>window.onload=function(){setTimeout(function(){window.print()},350)}<\/script></body></html>');win.document.close();
   }
+  function noteField(key) {
+    const el=paper.querySelector('[data-note-edit="'+key+'"]');
+    return (el?.innerText||el?.textContent||'').trim();
+  }
+  function noteWhatsAppText() {
+    const rows=[...paper.querySelectorAll('.rn-table tbody tr')].map(tr=>{
+      const cells=tr.querySelectorAll('td');
+      if(cells.length<4)return '';
+      const checked=(cells[0].innerText||cells[0].textContent||'').includes('☑');
+      const description=(cells[1].innerText||cells[1].textContent||'').trim();
+      const unit=(cells[2].innerText||cells[2].textContent||'').trim();
+      const amount=(cells[3].innerText||cells[3].textContent||'').trim();
+      if(!description||/^_{3,}$/.test(description))return '';
+      return (checked?'☑ ':'□ ')+description+(amount&&amount!=='$ __________'?'\n   Importe: '+amount:'');
+    }).filter(Boolean);
+    const obs=noteField('observations');
+    return [
+      '*NOTA DE REMISIÓN · NEXTLI*',
+      'Folio: '+noteField('folio'),
+      'Fecha: '+noteField('date'),
+      '',
+      '*DATOS DEL TUTOR*',
+      noteField('owner'),
+      noteField('phone'),
+      noteField('address'),
+      '',
+      '*DATOS DEL COMPAÑERO*',
+      noteField('pet'),
+      noteField('species'),
+      noteField('weight'),
+      'Fecha de defunción: '+noteField('death'),
+      '',
+      '*SERVICIO / PERSONALIZACIÓN*',
+      ...rows,
+      '',
+      '*FRASE / OBSERVACIONES*',
+      obs||'—',
+      '',
+      'Subtotal: '+noteField('subtotal'),
+      'Anticipo: '+noteField('deposit'),
+      '*TOTAL A PAGAR: '+noteField('total')+' MXN*',
+      '',
+      'NEXTLI · Cremación de Mascotas con Amor en México'
+    ].join('\n');
+  }
   function shareNote(){
     if(!workerMode)return;
-    const phone=normalizePhone(val('ownerPhone'));if(!/^\d{11,15}$/.test(phone)){alert('Revisa el teléfono del cliente.');return;}
-    const message='*NOTA DE REMISIÓN NEXTLI*\n\n'+noteText();
-    window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(message),'_blank');
+    const phone=normalizePhone(val('ownerPhone'));
+    if(!/^\d{11,15}$/.test(phone)){alert('Revisa el teléfono del cliente.');return;}
+    const message=noteWhatsAppText();
+    const url='https://wa.me/'+phone+'?text='+encodeURIComponent(message);
+    const opened=window.open(url,'_blank','noopener,noreferrer');
+    if(!opened)window.location.href=url;
   }
   openBtn.addEventListener('click',openNote);
   $('closeRemissionNote').addEventListener('click',closeNote);$('cancelRemissionNote').addEventListener('click',closeNote);
