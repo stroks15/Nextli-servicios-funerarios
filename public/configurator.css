@@ -273,3 +273,6 @@
 
 /* Indicador discreto de guardado automático */
 .progress-save-status{margin:4px 0 12px;text-align:center;color:#6a756c;font:500 11px/1.45 Poppins,Arial,sans-serif;min-height:16px}
+
+/* Capacidad configurable de las urnas */
+.adm-capacity-label{display:block;margin-top:8px;font:600 11px/1.5 Poppins,sans-serif;color:#536174}.adm-capacity-label input{display:block;width:100%;max-width:190px;margin-top:4px;padding:8px 10px;border:1px solid #c9c4b7;border-radius:8px;background:#fff;color:#10233d;font:600 13px Arial,sans-serif;box-sizing:border-box}.pcard-capacity{display:block;margin:4px 0 8px;color:#6d6b61;font:11px/1.4 Poppins,sans-serif}
