@@ -636,7 +636,6 @@ renderUrns(); renderExtras(); updatePriceLabels(); syncUrnControls(); updateTota
 (function initRemissionNote() {
   const openBtn = $('viewRemissionNote'), overlay = $('remissionNoteOverlay'), paper = $('remissionNotePaper');
   if (!openBtn || !overlay || !paper) return;
-  const chuchoPhone = '527121483834';
   let folio = '';
   const escHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const dateParts = d => { const p = d.split('-'); return p.length === 3 ? p[2]+'/'+p[1]+'/'+p[0] : d; };
@@ -696,7 +695,7 @@ renderUrns(); renderExtras(); updatePriceLabels(); syncUrnControls(); updateTota
   function shareNote(){
     if(!workerMode)return;
     const phone=normalizePhone(val('ownerPhone'));if(!/^\d{11,15}$/.test(phone)){alert('Revisa el teléfono del cliente.');return;}
-    const message='*NOTA DE REMISIÓN NEXTLI*\n\n'+noteText()+(extraNoteText.trim()?'\n\nNOTA EXTRA:\n'+extraNoteText.trim():'');
+    const message='*NOTA DE REMISIÓN NEXTLI*\n\n'+noteText();
     window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(message),'_blank');
   }
   openBtn.addEventListener('click',openNote);
