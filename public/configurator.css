@@ -208,3 +208,66 @@
  .remission-sheet{box-shadow:none!important;border:0!important;margin:0!important}
  .remission-sheet [contenteditable="true"]:focus{outline:0;background:transparent}
 }
+
+
+/* Nota de Remisión: composición fiel a la plantilla compartida */
+.remission-worker-tools{display:none!important}
+.worker-mode .remission-worker-tools{display:block!important}
+.remission-worker-tools .summary-extra{display:block}
+.remission-worker-tools .summary-extra textarea{font:13px/1.55 Arial,Helvetica,sans-serif}
+.remission-dialog{width:min(1100px,98vw)!important;max-width:1100px!important}
+.remission-preview-body{padding:12px!important;background:#e8e1d5!important;overflow:auto!important}
+.remission-paper{width:100%;max-width:900px;margin:0 auto;color:#111c2e}
+.remission-sheet{box-sizing:border-box;width:100%;aspect-ratio:210/297;min-height:0;padding:3.7% 6.7% 3.1%;background:#f8f5ed;border:0;box-shadow:0 7px 20px rgba(27,25,20,.22);font-family:Arial,Helvetica,sans-serif;font-size:clamp(9px,1.35vw,14px);color:#172033;display:flex;flex-direction:column}
+.rn-header{display:flex;align-items:center;justify-content:space-between;gap:4%;padding:0 0 1.6%;min-height:15%}
+.rn-brand{width:34%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#98772e;flex:0 0 34%}
+.rn-brand img{width:58%;height:auto;max-height:100px;object-fit:contain;display:block}
+.rn-brand strong{font-size:clamp(17px,2.7vw,29px);letter-spacing:.02em;line-height:1.03;color:#9b7a32;font-weight:700}
+.rn-brand small{font-size:clamp(8px,1.05vw,11px);line-height:1.15;color:#263044}
+.rn-title{flex:1;text-align:right;font-size:clamp(10px,1.7vw,18px);line-height:1.7;color:#202431}
+.rn-title h2{margin:0 0 1.8%;font-size:clamp(20px,3.5vw,36px);line-height:1.12;font-weight:800;letter-spacing:-.035em;color:#0b192c}
+.rn-title span{display:inline-block;min-width:32%;border:1.5px solid #222;border-radius:5px;padding:0 2%;line-height:1.55}
+.rn-contact{margin:0 -8.3% 2.2%;padding:1.1% 2%;background:#c7d6ca;text-align:center;font-size:clamp(8px,1.1vw,12px);line-height:1.4;color:#182232}
+.rn-two{display:grid;grid-template-columns:1fr 1fr;gap:3%;margin-bottom:2.2%;min-height:14%}
+.rn-two section{border:1.7px solid #263044;border-radius:10px;overflow:hidden;display:flex;flex-direction:column}
+.rn-two h3{margin:0;padding:1.7% 1%;border-bottom:1.7px solid #263044;text-align:center;font-size:clamp(14px,2.1vw,22px);line-height:1.1;color:#172033}
+.rn-two p{margin:0;padding:1.7% 3%;border-bottom:1px solid #c8c8bf;min-height:0;line-height:1.22;font-size:clamp(10px,1.6vw,17px);flex:1}
+.rn-two p:last-child{border-bottom:0}
+.rn-table{width:100%;border-collapse:separate;border-spacing:0;border:1.7px solid #263044;border-radius:10px;overflow:hidden;margin:0 0 2.2%;font-size:clamp(9px,1.4vw,14px);flex:1}
+.rn-table th{padding:1.1% .7%;background:#dbe2df;border-right:1px solid #b9c2bd;border-bottom:1px solid #aab3ae;text-align:center;font-size:clamp(10px,1.55vw,16px);line-height:1.1;color:#172033}
+.rn-table td{padding:.8% 1.4%;border-right:1px solid #c1c6c0;border-bottom:1px solid #c1c6c0;vertical-align:middle;line-height:1.15;min-height:0}
+.rn-table tr:last-child td{border-bottom:0}
+.rn-table th:last-child,.rn-table td:last-child{border-right:0}
+.rn-table .rn-check{width:8%;text-align:center;font-size:clamp(15px,2.1vw,22px)}
+.rn-table .rn-money{width:14%;text-align:right;white-space:nowrap}
+.rn-table .rn-blank td{height:7.4%;color:#6f766f}
+.rn-bottom{display:grid;grid-template-columns:1.08fr .92fr;gap:3%;align-items:stretch;margin-bottom:3%;min-height:13%}
+.rn-observations,.rn-totals{border:1.7px solid #263044;border-radius:10px;overflow:hidden}
+.rn-observations label{display:block;padding:2.3% 3%;font-size:clamp(10px,1.55vw,16px)}
+.rn-lines{white-space:pre-wrap;min-height:0;height:76%;margin:0 3% 2%;padding:1% 0;background:repeating-linear-gradient(to bottom,transparent 0,transparent 19px,#c9c9bf 20px,#c9c9bf 21px);line-height:21px;font-size:clamp(10px,1.45vw,15px)}
+.rn-totals p{display:flex;justify-content:space-between;align-items:center;margin:0;padding:2.5% 3%;border-bottom:1px solid #c8c8bf;font-size:clamp(11px,1.6vw,17px)}
+.rn-totals p b{font-weight:400;min-width:40%;text-align:right}
+.rn-totals>strong{display:block;padding:3%;background:#c8d7cb;font-size:clamp(13px,2vw,21px);line-height:1.25}
+.rn-payment{font-size:clamp(9px,1.3vw,13px)!important;border:0!important;white-space:nowrap}
+.rn-signatures{display:grid;grid-template-columns:1fr 1fr;gap:5%;margin-top:auto;padding-top:2.5%;text-align:center}
+.rn-signatures div{padding-top:1.2%;border-top:1px solid #293244;font-size:clamp(9px,1.25vw,13px);line-height:1.2}
+.remission-sheet footer{margin-top:2.5%;text-align:center;font:italic clamp(12px,1.9vw,20px) Georgia,serif;color:#111c2e}
+.remission-sheet [contenteditable="true"]{outline:none;border-radius:2px}
+.remission-sheet [contenteditable="true"]:focus{outline:1px dashed #a88736;background:rgba(255,245,206,.55)}
+.remission-actions{gap:9px!important;flex-wrap:wrap}
+@media(max-width:650px){
+ .remission-preview-body{padding:5px!important}
+ .remission-sheet{width:100%;aspect-ratio:210/297;padding:3.7% 5.5% 3%;font-size:8px}
+ .rn-header{gap:3%;min-height:15%}.rn-brand img{width:60%;max-height:55px}.rn-brand strong{font-size:clamp(12px,4.5vw,20px)}.rn-brand small{font-size:clamp(6px,2vw,9px)}
+ .rn-title{font-size:clamp(7px,2.5vw,12px)}.rn-title h2{font-size:clamp(13px,5vw,22px)}.rn-title span{min-width:30%}
+ .rn-contact{margin:0 -6.2% 2.2%;padding:1.2% 1%;font-size:clamp(6px,2vw,9px)}
+ .rn-two{gap:2.5%;min-height:14%}.rn-two h3{font-size:clamp(9px,3.3vw,14px)}.rn-two p{padding:1.7% 2%;font-size:clamp(6px,2.4vw,10px)}
+ .rn-table{font-size:clamp(6px,2vw,9px)}.rn-table th{font-size:clamp(6px,2.3vw,10px);padding:1.2% .4%}.rn-table td{padding:.7% .8%}.rn-table .rn-check{font-size:clamp(9px,3vw,15px)}.rn-table .rn-money{width:14%}
+ .rn-bottom{gap:2.5%;min-height:13%}.rn-observations label{font-size:clamp(6px,2.2vw,10px);padding:2.3% 2%}.rn-lines{height:76%;line-height:clamp(9px,3.1vw,13px);background:repeating-linear-gradient(to bottom,transparent 0,transparent 9px,#c9c9bf 10px,#c9c9bf 11px);font-size:clamp(6px,2vw,9px)}
+ .rn-totals p{font-size:clamp(6px,2.3vw,10px);padding:2.5% 2%}.rn-totals>strong{font-size:clamp(7px,2.8vw,12px);padding:3%}.rn-payment{font-size:clamp(5px,1.8vw,8px)!important}
+ .rn-signatures{gap:4%;padding-top:2.5%}.rn-signatures div{font-size:clamp(6px,1.9vw,9px)}.remission-sheet footer{font-size:clamp(8px,3vw,13px);margin-top:2.5%}
+}
+@media print{
+ .remission-sheet{box-shadow:none!important;border:0!important;margin:0!important}
+ .remission-sheet [contenteditable="true"]:focus{outline:0;background:transparent}
+}
