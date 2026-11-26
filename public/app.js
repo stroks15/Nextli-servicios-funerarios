@@ -316,7 +316,7 @@ function buildMessage(audience) {
       `*Color:* ${petColorLabel()}`,
       `*Edad:* ${val('petAge')}`,
       `*Fecha de defunción:* ${fmtDate()}`,
-      `*Frase:* ${val('farewellPhrase')}${extraNoteText.trim() ? '\\n*Nota extra:* ' + extraNoteText.trim() : ''}`,
+      `*Frase:* ${val('farewellPhrase')}${extraNoteText.trim() ? '\n*Nota extra:* ' + extraNoteText.trim() : ''}`,
       '',
       '*CLIENTE*',
       `*Propietario:* ${val('ownerName')}`,
@@ -350,7 +350,7 @@ ${isCom() ? '' : `*Urna:* ${urn?.name || '—'}\n`}*Tamaño / peso:* ${SIZE_LABE
 *Teléfono:* ${val('ownerPhone')}
 *Dirección:* ${val('ownerAddress')}
 *Fecha de defunción:* ${fmtDate()}
-*Frase:* ${val('farewellPhrase')}${extraNoteText.trim() ? '\\n*Nota extra:* ' + extraNoteText.trim() : ''}`;
+*Frase:* ${val('farewellPhrase')}${extraNoteText.trim() ? '\n*Nota extra:* ' + extraNoteText.trim() : ''}`;
 
   if (audience === 'recibo') { // trabajador → cliente: incluye su estado de pago
     const p = paymentInfo();
@@ -468,13 +468,13 @@ $('sendClientWa').onclick = () => {
   if (!workerMode) return;
   if (!requiredOk()) { alert('Completa primero todos los datos obligatorios.'); return; }
   const phone = normalizePhone(val('ownerPhone'));
-  if (!/^\\d{11,15}$/.test(phone)) { alert('Revisa el teléfono del cliente: parece incompleto.'); return; }
+  if (!/^\d{11,15}$/.test(phone)) { alert('Revisa el teléfono del cliente: parece incompleto.'); return; }
   window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(buildMessage('recibo')), '_blank');
 };
 $('sendChuchoWa').onclick = () => {
   if (!workerMode) return;
   if (!requiredOk()) { alert('Completa primero todos los datos obligatorios.'); return; }
-  const message = '*ORDEN NEXTLI PARA CHUCHO*\\n\\n' + buildMessage('grupo');
+  const message = '*ORDEN NEXTLI PARA CHUCHO*\n\n' + buildMessage('grupo');
   window.open('https://wa.me/527121483834?text=' + encodeURIComponent(message), '_blank');
 };
 $('downloadCertificate').onclick = generateCertificate;
