@@ -5,7 +5,7 @@
 const CFG = window.NEXTLI_CONFIG || {};
 const INV = window.NextliInventory;
 const CERT = window.NextliCertificate;
-const IMAGE_BASE = CFG.IMAGE_BASE || 'https://nextli-personaliza-despedida.vercel.app/images/';
+const IMAGE_BASE = CFG.IMAGE_BASE || '/images/';
 const WA_NUMBER = CFG.WA_NUMBER || '525521889698';
 
 const SIZE_LABEL = { chico: 'Chico (0–10 kg)', mediano: 'Mediano (11–25 kg)', grande: 'Grande (26–45 kg)', xl: 'Extra grande (+45 kg)' };
@@ -501,6 +501,27 @@ $('sendChuchoWa').onclick = () => {
 };
 $('downloadCertificate').onclick = generateCertificate;
 
+function restartForNextPet(){
+  if(!confirm('¿Comenzar una nueva mascota? Se borrarán los datos de esta solicitud para iniciar desde cero.'))return;
+  const keepWorker=workerMode;
+  try{localStorage.removeItem('nextli-progress-v3');}catch(e){}
+  document.querySelectorAll('input,select,textarea').forEach(el=>{
+    if(el.type==='checkbox'||el.type==='radio')el.checked=!!el.defaultChecked;
+    else el.value=el.defaultValue||'';
+  });
+  state={extraQuantities:{},service:null,species:'',otherSpecies:'',breed:'',weight:'',weightConfirmed:false,urnId:null,plus:false,huella:false,cert:false,plusQty:0,huellaQty:0,certQty:0,petColor:'',petColorOther:'',color:'',frame:'',paymentStatus:'No pagado',paymentOther:''};
+  extraNoteText='';clientMessageOverride='';nextliNoteEditDraft={};nextliSavedNoteFolio='';
+  document.querySelectorAll('[data-service],[data-frame],[data-color]').forEach(el=>el.classList.remove('selected'));
+  $('paymentStatus').value='No pagado';$('paymentOther').style.display='none';
+  $('workerPaymentWrap').style.display=keepWorker?'block':'none';
+  document.body.classList.toggle('worker-mode',keepWorker);
+  $('workerButton').textContent=keepWorker?'Modo trabajador NEXTLI':'Personaliza tu despedida';
+  updatePetFlow();applyServiceUI();renderUrns();refreshExtraCards();renderExtras();updateTotal();updatePayNote();
+  goTo(1);
+  INV.toast('Listo. Puedes registrar a otra mascota desde cero.');
+}
+$('restartNewPet').addEventListener('click',restartForNextPet);
+
 /* ---------- Certificado de cremación (canvas → PDF) ---------- */
 let certCanvas = null;
 function breedForCert() {
@@ -826,7 +847,7 @@ renderUrns(); renderExtras(); updatePriceLabels(); syncUrnControls(); updateTota
       else fields[el.id]={value:el.value};
     });
     return {
-      version:3, savedAt:Date.now(), state:JSON.parse(JSON.stringify(state)),
+      version:3, workerMode:true, savedAt:Date.now(), state:JSON.parse(JSON.stringify(state)),
       fields, step:+document.querySelector('.step-panel.active')?.dataset.step||1,
       appReady:document.body.classList.contains('app-ready'),
       extraNoteText, clientMessageOverride, noteEdits:nextliNoteEditDraft,
@@ -835,18 +856,21 @@ renderUrns(); renderExtras(); updatePriceLabels(); syncUrnControls(); updateTota
   }
   function saveNow(){
     if(restoring)return;
+    if(!workerMode){try{localStorage.removeItem(KEY);}catch(e){}setStatus('');return;}
     try{localStorage.setItem(KEY,JSON.stringify(capture()));setStatus('✓ Progreso guardado automáticamente en este dispositivo');}
     catch(e){setStatus('No se pudo guardar el progreso en este navegador');}
   }
   function scheduleSave(){
     if(restoring)return;
+    if(!workerMode){try{localStorage.removeItem(KEY);}catch(e){}setStatus('');return;}
     setStatus('Guardando progreso…');
     clearTimeout(saveTimer);saveTimer=setTimeout(saveNow,250);
   }
   function restore(){
     let data;
+    if(!workerMode){try{localStorage.removeItem(KEY);}catch(e){}return;}
     try{data=JSON.parse(localStorage.getItem(KEY)||'null');}catch(e){return;}
-    if(!data||data.version!==3)return;
+    if(!data||data.version!==3||data.workerMode!==true){try{localStorage.removeItem(KEY);}catch(e){}return;}
     restoring=true;
     try{
       if(data.state&&typeof data.state==='object')Object.assign(state,data.state);
