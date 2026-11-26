@@ -296,6 +296,7 @@ function buildMessage(audience) {
   const urn = getUrn(state.urnId);
   const serviceName = isCom() ? 'Cremación Comunitaria' : 'Cremación Individual';
   const ex = extrasList();
+  const noteExtra = workerMode ? extraNoteText.trim() : '';
   const breedTxt = state.breed ? ' / ' + state.breed : '';
 
   if (audience === 'grupo') {
@@ -317,7 +318,7 @@ function buildMessage(audience) {
       `*Color:* ${petColorLabel()}`,
       `*Edad:* ${val('petAge')}`,
       `*Fecha de defunción:* ${fmtDate()}`,
-      `*Frase:* ${val('farewellPhrase')}${extraNoteText.trim() ? '\n*Nota extra:* ' + extraNoteText.trim() : ''}`,
+      `*Frase:* ${val('farewellPhrase')}`,
       '',
       '*CLIENTE*',
       `*Propietario:* ${val('ownerName')}`,
@@ -351,7 +352,7 @@ ${isCom() ? '' : `*Urna:* ${urn?.name || '—'}\n`}*Tamaño / peso:* ${SIZE_LABE
 *Teléfono:* ${val('ownerPhone')}
 *Dirección:* ${val('ownerAddress')}
 *Fecha de defunción:* ${fmtDate()}
-*Frase:* ${val('farewellPhrase')}${extraNoteText.trim() ? '\n*Nota extra:* ' + extraNoteText.trim() : ''}`;
+*Frase:* ${val('farewellPhrase')}${noteExtra ? '\n*Nota extra:* ' + noteExtra : ''}`;
 
   if (audience === 'recibo') { // trabajador → cliente: incluye su estado de pago
     const p = paymentInfo();
@@ -666,12 +667,12 @@ renderUrns(); renderExtras(); updatePriceLabels(); syncUrnControls(); updateTota
     const rowExtra = id => { const x=byId(id); const q=extraQty(id); return {desc:x?.name || id, price:Number(x?.price||0)*q, unit:Number(x?.price||0), qty:q, checked:q>0}; };
     const rows = [
       {desc:'Cremación Individual (100% cenizas, urna, placa, certificado, foto testigo)',price:0,unit:0,qty:1,checked:!isCom()},
-      {desc:'Cremación sin Recuperación / Comunitaria',price:0,unit:0,qty:1,checked:isCom()},
+      {desc:'Cremación sin Recuperación / Comunitaria',price:isCom()?calcBase():0,unit:isCom()?calcBase():0,qty:1,checked:isCom()},
       {desc:'Eutanasia Asistida (Clínica Salud Animal)',price:0,unit:0,qty:1,checked:false},
       {...rowExtra('plus'),desc:'Paquete Plus — Homenaje Completo (Marco/acrílico, huella en aluminio, vinilo)',checked:!!state.plus},
       {...rowExtra('huella'),desc:'Huella con pelo de mascota',checked:!!state.huella},
       {...rowExtra('cert'),desc:'Certificado físico adicional',checked:!!state.cert},
-      {desc:'Urna seleccionada: '+(urn?.name||'________________')+' | Color vinilo: '+(state.color||'________')+' | ( ) Plateado  ( ) Blanco  ( ) Negro  ( ) Dorado',price:calcBase(),unit:calcBase(),qty:1,checked:!!urn}
+      {desc:'Urna seleccionada: '+(urn?.name||'________________')+' | Color vinilo: '+(state.color||'________')+' | ( ) Plateado  ( ) Blanco  ( ) Negro  ( ) Dorado',price:(!isCom()&&urn)?calcBase():0,unit:(!isCom()&&urn)?calcBase():0,qty:1,checked:!!urn}
     ];
     const used=['plus','huella','cert'];
     extras.filter(x=>!used.includes(x.id)&&extraQty(x.id)>0).forEach(x=>{
