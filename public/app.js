@@ -316,7 +316,7 @@ function buildMessage(audience) {
       `*Color:* ${petColorLabel()}`,
       `*Edad:* ${val('petAge')}`,
       `*Fecha de defunción:* ${fmtDate()}`,
-      `*Frase:* ${val('farewellPhrase')}`,
+      `*Frase:* ${val('farewellPhrase')}${extraNoteText.trim() ? '\\n*Nota extra:* ' + extraNoteText.trim() : ''}`,
       '',
       '*CLIENTE*',
       `*Propietario:* ${val('ownerName')}`,
