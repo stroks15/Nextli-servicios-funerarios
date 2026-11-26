@@ -765,156 +765,7 @@ renderUrns(); renderExtras(); updatePriceLabels(); syncUrnControls(); updateTota
     if(!folio)folio=nextFolio(); nextliSavedNoteFolio=folio; renderPaper();
     overlay.classList.add('open');overlay.setAttribute('aria-hidden','false');
   }
-  function downloadNote(){
-    if(!workerMode)return;
-    const sheet=paper.querySelector('.remission-sheet');if(!sheet)return;
-    const win=window.open('','_blank');
-    if(!win){alert('Permite abrir la ventana para imprimir o guardar la Nota como PDF.');return;}
-    const css=[...document.querySelectorAll('link[rel="stylesheet"]')].map(x=>'<link rel="stylesheet" href="'+x.href+'">').join('');
-    win.document.open();win.document.write('<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Nota de Remisión NEXTLI</title>'+css+'<style>body{background:#fff!important;margin:0!important;padding:0!important}.remission-sheet{width:190mm!important;min-height:277mm!important;margin:0 auto!important;box-shadow:none!important;border:0!important}.remission-overlay,.certificate-preview-overlay{display:none!important}@page{size:A4;margin:10mm}</style></head><body>'+sheet.outerHTML+'<script>window.onload=function(){setTimeout(function(){window.print()},350)}<\/script></body></html>');win.document.close();
-  }
-  function noteField(key) {
-    const el=paper.querySelector('[data-note-edit="'+key+'"]');
-    return (el?.innerText||el?.textContent||'').trim();
-  }
-  function noteWhatsAppText() {
-    const rows=[...paper.querySelectorAll('.rn-table tbody tr')].map(tr=>{
-      const cells=tr.querySelectorAll('td');
-      if(cells.length<4)return '';
-      const checkText=(cells[0].innerText||cells[0].textContent||'');const checked=checkText.includes('☑')||checkText.includes('✓');
-      const description=(cells[1].innerText||cells[1].textContent||'').trim();
-      const unit=(cells[2].innerText||cells[2].textContent||'').trim();
-      const amount=(cells[3].innerText||cells[3].textContent||'').trim();
-      if(!description||/^_{3,}$/.test(description))return '';
-      return (checked?'☑ ':'□ ')+description+(amount&&amount!=='$ __________'?'\n   Importe: '+amount:'');
-    }).filter(Boolean);
-    const obs=noteField('observations');
-    return [
-      '*NOTA DE REMISIÓN · NEXTLI*',
-      'Folio: '+noteField('folio'),
-      'Fecha: '+noteField('date'),
-      '',
-      '*DATOS DEL TUTOR*',
-      noteField('owner'),
-      noteField('phone'),
-      noteField('address'),
-      '',
-      '*DATOS DEL COMPAÑERO*',
-      noteField('pet'),
-      noteField('species'),
-      noteField('weight'),
-      'Fecha de defunción: '+noteField('death'),
-      '',
-      '*SERVICIO / PERSONALIZACIÓN*',
-      ...rows,
-      '',
-      '*FRASE / OBSERVACIONES*',
-      obs||'—',
-      '',
-      'Subtotal: '+noteField('subtotal'),
-      'Anticipo: '+noteField('deposit'),
-      '*TOTAL A PAGAR: '+noteField('total')+' MXN*',
-      '',
-      'NEXTLI · Cremación de Mascotas con Amor en México'
-    ].join('\n');
-  }
-  function shareNote(){
-    if(!workerMode)return;
-    const phone=normalizePhone(val('ownerPhone'));
-    if(!/^\d{11,15}$/.test(phone)){alert('Revisa el teléfono del cliente.');return;}
-    const message=noteWhatsAppText();
-    const url='https://wa.me/'+phone+'?text='+encodeURIComponent(message);
-    const opened=window.open(url,'_blank','noopener,noreferrer');
-    if(!opened)window.location.href=url;
-  }
-  openBtn.addEventListener('click',openNote);
-  $('closeRemissionNote').addEventListener('click',closeNote);$('cancelRemissionNote').addEventListener('click',closeNote);
-  $('downloadRemissionNote').addEventListener('click',downloadNote);$('whatsappRemissionNote').addEventListener('click',shareNote);
-  overlay.addEventListener('click',e=>{if(e.target===overlay)closeNote();});
-  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&overlay.classList.contains('open'))closeNote();});
-})();
-
-
-/* ---------- Guardado automático del progreso / reanudación ---------- */
-(function initProgressAutosave(){
-  const KEY='nextli-progress-v3';
-  const status=$('progressSaveStatus');
-  let saveTimer=null, restoring=false;
-  function setStatus(msg){if(status)status.textContent=msg;}
-  function capture(){
-    const fields={};
-    document.querySelectorAll('input[id],select[id],textarea[id]').forEach(el=>{
-      if(el.type==='checkbox'||el.type==='radio')fields[el.id]={checked:!!el.checked};
-      else fields[el.id]={value:el.value};
-    });
-    return {
-      version:3, workerMode:true, savedAt:Date.now(), state:JSON.parse(JSON.stringify(state)),
-      fields, step:+document.querySelector('.step-panel.active')?.dataset.step||1,
-      appReady:document.body.classList.contains('app-ready'),
-      extraNoteText, clientMessageOverride, noteEdits:nextliNoteEditDraft,
-      noteFolio:nextliSavedNoteFolio
-    };
-  }
-  function saveNow(){
-    if(restoring)return;
-    if(!workerMode){try{localStorage.removeItem(KEY);}catch(e){}setStatus('');return;}
-    try{localStorage.setItem(KEY,JSON.stringify(capture()));setStatus('✓ Progreso guardado automáticamente en este dispositivo');}
-    catch(e){setStatus('No se pudo guardar el progreso en este navegador');}
-  }
-  function scheduleSave(){
-    if(restoring)return;
-    if(!workerMode){try{localStorage.removeItem(KEY);}catch(e){}setStatus('');return;}
-    setStatus('Guardando progreso…');
-    clearTimeout(saveTimer);saveTimer=setTimeout(saveNow,250);
-  }
-  function restore(){
-    let data;
-    if(!workerMode){try{localStorage.removeItem(KEY);}catch(e){}return;}
-    try{data=JSON.parse(localStorage.getItem(KEY)||'null');}catch(e){return;}
-    if(!data||data.version!==3||data.workerMode!==true){try{localStorage.removeItem(KEY);}catch(e){}return;}
-    restoring=true;
-    try{
-      if(data.state&&typeof data.state==='object')Object.assign(state,data.state);
-      if(!state.extraQuantities||typeof state.extraQuantities!=='object')state.extraQuantities={};
-      Object.entries(data.fields||{}).forEach(([id,v])=>{
-        const el=$(id);if(!el||!v)return;
-        if(el.type==='checkbox'||el.type==='radio')el.checked=!!v.checked;
-        else if(typeof v.value==='string')el.value=v.value;
-      });
-      extraNoteText=typeof data.extraNoteText==='string'?data.extraNoteText:'';
-      clientMessageOverride=typeof data.clientMessageOverride==='string'?data.clientMessageOverride:'';
-      nextliNoteEditDraft=data.noteEdits&&typeof data.noteEdits==='object'?data.noteEdits:{};
-      nextliSavedNoteFolio=typeof data.noteFolio==='string'?data.noteFolio:'';
-      document.querySelectorAll('[data-service]').forEach(el=>el.classList.toggle('selected',el.dataset.service===state.service));
-      document.querySelectorAll('[data-frame]').forEach(el=>el.classList.toggle('selected',el.dataset.frame===state.frame));
-      document.querySelectorAll('[data-color]').forEach(el=>el.classList.toggle('selected',el.dataset.color===state.color));
-      $('paymentOther').style.display=state.paymentStatus==='Otro'?'block':'none';
-      $('petColorOther').style.display=state.petColor==='Otro'?'block':'none';
-      updatePetFlow();applyServiceUI();renderUrns();refreshExtraCards();renderExtras();updateTotal();updatePayNote();
-      const step=Math.min(5,Math.max(1,Number(data.step)||1));
-      if(step===5)renderSummary();
-      goTo(step);
-      // No ocultar la bienvenida automáticamente al restaurar el progreso.
-      // El usuario debe pulsar Continuar para entrar al configurador.
-      setStatus('✓ Se restauró tu progreso guardado');
-    }catch(e){console.warn('NEXTLI: no se pudo restaurar el progreso',e);}
-    finally{restoring=false;}
-  }
-  restore();
-  document.addEventListener('input',scheduleSave,true);
-  document.addEventListener('change',scheduleSave,true);
-  document.addEventListener('click',()=>setTimeout(scheduleSave,0),true);
-  document.addEventListener('input',e=>{
-    const el=e.target;
-    if(el&&el.matches&&el.matches('[data-note-edit]'))nextliNoteEditDraft[el.dataset.noteEdit]=el.innerText;
-  },true);
-  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'){clearTimeout(saveTimer);saveNow();}else scheduleSave();});
-  window.addEventListener('pagehide',()=>{clearTimeout(saveTimer);saveNow();});
-  window.addEventListener('beforeunload',saveNow);
-  window.addEventListener('pageshow',()=>{if(!restoring)scheduleSave();});
-  // Persist whenever app state changes through direct UI selections.
-  document.querySelectorAll('[data-service],[data-frame],[data-color]').forEach(el=>el.addEventListener('click',()=>setTimeout(scheduleSave,0)));
-})();  async function downloadNote(){
+  async function downloadNote(){
     if(!workerMode)return;
     const sheet=paper.querySelector('.remission-sheet');if(!sheet)return;
     const W=1240,H=1754,cv=document.createElement('canvas');cv.width=W;cv.height=H;
@@ -1017,7 +868,7 @@ renderUrns(); renderExtras(); updatePriceLabels(); syncUrnControls(); updateTota
     const rows=[...paper.querySelectorAll('.rn-table tbody tr')].map(tr=>{
       const cells=tr.querySelectorAll('td');
       if(cells.length<4)return '';
-      const checked=(cells[0].innerText||cells[0].textContent||'').includes('☑');
+      const checkText=(cells[0].innerText||cells[0].textContent||'');const checked=checkText.includes('☑')||checkText.includes('✓');
       const description=(cells[1].innerText||cells[1].textContent||'').trim();
       const unit=(cells[2].innerText||cells[2].textContent||'').trim();
       const amount=(cells[3].innerText||cells[3].textContent||'').trim();
@@ -1071,7 +922,7 @@ renderUrns(); renderExtras(); updatePriceLabels(); syncUrnControls(); updateTota
 })();
 
 
-/* ---------- Guardado automático del progreso / reanudación ---------- */
+/* ---------- Guardado automático del progreso / reanudación (solo trabajador) ---------- */
 (function initProgressAutosave(){
   const KEY='nextli-progress-v3';
   const status=$('progressSaveStatus');
@@ -1084,7 +935,7 @@ renderUrns(); renderExtras(); updatePriceLabels(); syncUrnControls(); updateTota
       else fields[el.id]={value:el.value};
     });
     return {
-      version:3, savedAt:Date.now(), state:JSON.parse(JSON.stringify(state)),
+      version:3, workerMode:true, savedAt:Date.now(), state:JSON.parse(JSON.stringify(state)),
       fields, step:+document.querySelector('.step-panel.active')?.dataset.step||1,
       appReady:document.body.classList.contains('app-ready'),
       extraNoteText, clientMessageOverride, noteEdits:nextliNoteEditDraft,
@@ -1093,18 +944,21 @@ renderUrns(); renderExtras(); updatePriceLabels(); syncUrnControls(); updateTota
   }
   function saveNow(){
     if(restoring)return;
+    if(!workerMode){try{localStorage.removeItem(KEY);}catch(e){}setStatus('');return;}
     try{localStorage.setItem(KEY,JSON.stringify(capture()));setStatus('✓ Progreso guardado automáticamente en este dispositivo');}
     catch(e){setStatus('No se pudo guardar el progreso en este navegador');}
   }
   function scheduleSave(){
     if(restoring)return;
+    if(!workerMode){try{localStorage.removeItem(KEY);}catch(e){}setStatus('');return;}
     setStatus('Guardando progreso…');
     clearTimeout(saveTimer);saveTimer=setTimeout(saveNow,250);
   }
   function restore(){
     let data;
+    if(!workerMode){try{localStorage.removeItem(KEY);}catch(e){}return;}
     try{data=JSON.parse(localStorage.getItem(KEY)||'null');}catch(e){return;}
-    if(!data||data.version!==3)return;
+    if(!data||data.version!==3||data.workerMode!==true){try{localStorage.removeItem(KEY);}catch(e){}return;}
     restoring=true;
     try{
       if(data.state&&typeof data.state==='object')Object.assign(state,data.state);
@@ -1147,4 +1001,4 @@ renderUrns(); renderExtras(); updatePriceLabels(); syncUrnControls(); updateTota
   window.addEventListener('pageshow',()=>{if(!restoring)scheduleSave();});
   // Persist whenever app state changes through direct UI selections.
   document.querySelectorAll('[data-service],[data-frame],[data-color]').forEach(el=>el.addEventListener('click',()=>setTimeout(scheduleSave,0)));
-})();
+})()
