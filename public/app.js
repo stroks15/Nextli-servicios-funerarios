@@ -15,6 +15,7 @@ const catSize = { Siamés: 'chico', Persa: 'chico', 'Maine Coon': 'mediano', Rag
 let workerMode = false, logoTaps = 0, workerUnlockArmed = false, workerUnlockTimer = null;
 const WORKER_UNLOCK_WINDOW = 3000;
 let extraNoteText = '';
+let clientMessageOverride = '';
 let state = { extraQuantities: {}, service: null, species: '', otherSpecies: '', breed: '', weight: '', weightConfirmed: false, urnId: null, plus: false, huella: false, cert: false, plusQty: 0, huellaQty: 0, certQty: 0, petColor: '', petColorOther: '', color: '', frame: '', paymentStatus: 'No pagado', paymentOther: '' };
 
 const $ = id => document.getElementById(id);
@@ -367,13 +368,20 @@ function line(a, b) { return `<div class="summary-line"><span>${a}</span><b>${es
 function renderSummary() {
   const urn = getUrn(state.urnId);
   const extra = extraNoteText || '';
-  $('summaryBox').innerHTML = `<div class="summary-box"><h4>Resumen de tu solicitud</h4>${line('Servicio', isCom() ? 'Cremación Comunitaria' : 'Cremación Individual')}${line('Mascota', val('petName'))}${line('Especie / raza', speciesLabel() + (state.breed ? ' / ' + state.breed : ''))}${line('Color', petColorLabel())}${line('Tamaño / peso', SIZE_LABEL[state.weight] || '—')}${isCom() ? '' : line('Urna', urn?.name || '—')}${extrasList().map(x => line('Adicional', x)).join('')}${line('Propietario', val('ownerName'))}${line('Teléfono', val('ownerPhone'))}${line('Dirección', val('ownerAddress'))}${workerMode ? line('Pago', paymentLabel()) + line('Saldo pendiente', money(paymentInfo().balance) + ' MXN') : ''}<div class="summary-total"><span>Total estimado</span><span>${money(total())} MXN</span></div><div class="summary-extra"><label for="extraSummaryNote">Nota extra / observaciones (se incluirá en WhatsApp y en la Nota de Remisión)</label><textarea id="extraSummaryNote" rows="3" maxlength="1200" placeholder="Agrega indicaciones, observaciones o una nota especial…">${esc(extra)}</textarea></div></div>`;
+  $('summaryBox').innerHTML = `<div class="summary-box"><h4>Resumen de tu solicitud</h4>${line('Servicio', isCom() ? 'Cremación Comunitaria' : 'Cremación Individual')}${line('Mascota', val('petName'))}${line('Especie / raza', speciesLabel() + (state.breed ? ' / ' + state.breed : ''))}${line('Color', petColorLabel())}${line('Tamaño / peso', SIZE_LABEL[state.weight] || '—')}${isCom() ? '' : line('Urna', urn?.name || '—')}${extrasList().map(x => line('Adicional', x)).join('')}${line('Propietario', val('ownerName'))}${line('Teléfono', val('ownerPhone'))}${line('Dirección', val('ownerAddress'))}${workerMode ? line('Pago', paymentLabel()) + line('Saldo pendiente', money(paymentInfo().balance) + ' MXN') : ''}<div class="summary-total"><span>Total estimado</span><span>${money(total())} MXN</span></div><div class="summary-extra"><label for="extraSummaryNote">Nota extra / observaciones (se incluirá en WhatsApp y en la Nota de Remisión)</label><textarea id="extraSummaryNote" rows="3" maxlength="1200" placeholder="Agrega indicaciones, observaciones o una nota especial…">${esc(extra)}</textarea></div><div class="summary-extra summary-message-edit"><label for="editableClientMessage">Mensaje de WhatsApp editable (se enviará con estos cambios)</label><textarea id="editableClientMessage" rows="8">${esc(buildMessage('cliente'))}</textarea></div></div>`;
+  const messageInput = $('editableClientMessage');
+  if (messageInput) messageInput.addEventListener('input', e => {
+    clientMessageOverride = e.target.value;
+    $('sendWa').href = 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(clientMessageOverride);
+  });
   const extraInput = $('extraSummaryNote');
   if (extraInput) extraInput.addEventListener('input', e => {
     extraNoteText = e.target.value;
-    $('sendWa').href = 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(buildMessage('cliente'));
+    clientMessageOverride = buildMessage('cliente');
+    if ($('editableClientMessage')) $('editableClientMessage').value = clientMessageOverride;
+    $('sendWa').href = 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(clientMessageOverride);
   });
-  $('sendWa').href = 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(buildMessage('cliente'));
+  $('sendWa').href = 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(clientMessageOverride || buildMessage('cliente'));
 }
 function requiredOk() {
   const ids = ['petName', 'petAge', 'petDate', 'ownerName', 'ownerPhone', 'ownerAddress'];
@@ -469,7 +477,10 @@ $('sendClientWa').onclick = () => {
   if (!requiredOk()) { alert('Completa primero todos los datos obligatorios.'); return; }
   const phone = normalizePhone(val('ownerPhone'));
   if (!/^\d{11,15}$/.test(phone)) { alert('Revisa el teléfono del cliente: parece incompleto.'); return; }
-  window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(buildMessage('recibo')), '_blank');
+  const p = paymentInfo();
+  let message = clientMessageOverride || $('editableClientMessage')?.value || buildMessage('cliente');
+  message += `\n\n*PAGO:* ${p.label}\n*Abonado:* ${money(p.paid)} MXN\n*Saldo pendiente:* ${money(p.balance)}`;
+  window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(message), '_blank');
 };
 $('sendChuchoWa').onclick = () => {
   if (!workerMode) return;
