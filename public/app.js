@@ -781,7 +781,7 @@ renderUrns(); renderExtras(); updatePriceLabels(); syncUrnControls(); updateTota
     const rows=[...paper.querySelectorAll('.rn-table tbody tr')].map(tr=>{
       const cells=tr.querySelectorAll('td');
       if(cells.length<4)return '';
-      const checked=(cells[0].innerText||cells[0].textContent||'').includes('☑');
+      const checkText=(cells[0].innerText||cells[0].textContent||'');const checked=checkText.includes('☑')||checkText.includes('✓');
       const description=(cells[1].innerText||cells[1].textContent||'').trim();
       const unit=(cells[2].innerText||cells[2].textContent||'').trim();
       const amount=(cells[3].innerText||cells[3].textContent||'').trim();
@@ -988,7 +988,22 @@ renderUrns(); renderExtras(); updatePriceLabels(); syncUrnControls(); updateTota
     text('Firma de conformidad del Tutor',320,signY+14,17,C.muted,'400','center');
     text('Recibido / Entregado por NEXTLI',920,signY+14,17,C.muted,'400','center');
     text('“Pequeños detalles que guardan su huella por siempre.”',W/2,1680,22,C.navy,'italic 500','center','Georgia');
-    const blob=await CERT.toPdfBlob(cv,'Nota de Remisión NEXTLI');
+    const blob=await (async function canvasToA4Pdf(canvas){
+      const jpeg=await new Promise((resolve,reject)=>canvas.toBlob(b=>{if(!b)return reject(new Error('No se pudo generar el PDF de la nota.'));b.arrayBuffer().then(v=>resolve(new Uint8Array(v)),reject);},'image/jpeg',0.94));
+      const enc=new TextEncoder(),parts=[],offsets=[];let length=0;
+      const push=data=>{const bytes=typeof data==='string'?enc.encode(data):data;parts.push(bytes);length+=bytes.length;};
+      const obj=(n,body)=>{offsets[n]=length;push(n+' 0 obj\\n');push(body);push('\\nendobj\\n');};
+      const pageW=595.28,pageH=841.89;
+      push('%PDF-1.4\\n%\\xE2\\xE3\\xCF\\xD3\\n');
+      obj(1,'<< /Type /Catalog /Pages 2 0 R >>');
+      obj(2,'<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
+      obj(3,'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '+pageW+' '+pageH+'] /Resources << /XObject << /Im0 4 0 R >> /ProcSet [/PDF /ImageC] >> /Contents 5 0 R >>');
+      offsets[4]=length;push('4 0 obj\\n<< /Type /XObject /Subtype /Image /Width '+canvas.width+' /Height '+canvas.height+' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '+jpeg.length+' >>\\nstream\\n');push(jpeg);push('\\nendstream\\nendobj\\n');
+      const content='q '+pageW+' 0 0 '+pageH+' 0 0 cm /Im0 Do Q';obj(5,'<< /Length '+content.length+' >>\\nstream\\n'+content+'\\nendstream');
+      obj(6,'<< /Title (Nota de Remision NEXTLI) /Producer (NEXTLI) >>');
+      const xrefPos=length;let xref='xref\\n0 7\\n0000000000 65535 f \\n';for(let i=1;i<=6;i++)xref+=String(offsets[i]).padStart(10,'0')+' 00000 n \\n';push(xref);push('trailer\\n<< /Size 7 /Root 1 0 R /Info 6 0 R >>\\nstartxref\\n'+xrefPos+'\\n%%EOF');
+      const out=new Uint8Array(length);let p=0;parts.forEach(b=>{out.set(b,p);p+=b.length;});return new Blob([out],{type:'application/pdf'});
+    })(cv);
     const url=URL.createObjectURL(blob),a=document.createElement('a');
     const safe=(val('petName')==='—'?'mascota':val('petName')).replace(/[^a-z0-9áéíóúñ_-]+/gi,'-');
     a.href=url;a.download='Nota-Remision-NEXTLI-'+safe+'.pdf';document.body.appendChild(a);a.click();a.remove();
