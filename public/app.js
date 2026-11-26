@@ -641,8 +641,23 @@ renderUrns(); renderExtras(); updatePriceLabels(); syncUrnControls(); updateTota
   });
 
   if ('serviceWorker' in navigator && /^https?:$/.test(window.location.protocol)) {
+    var nextliSwReloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function() {
+      if (nextliSwReloading) return;
+      nextliSwReloading = true;
+      // pagehide activa el autosave antes de recargar con la versión nueva.
+      window.location.reload();
+    });
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('/sw.js').catch(function(err) {
+      navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(function(reg) {
+        function checkForUpdate() {
+          if (document.visibilityState === 'visible' && reg.update) reg.update().catch(function(){});
+        }
+        window.addEventListener('pageshow', checkForUpdate);
+        document.addEventListener('visibilitychange', checkForUpdate);
+        window.setInterval(checkForUpdate, 5 * 60 * 1000);
+        checkForUpdate();
+      }).catch(function(err) {
         console.warn('NEXTLI: no se pudo registrar el modo sin conexión.', err);
       });
     });
