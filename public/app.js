@@ -682,44 +682,50 @@ renderUrns(); renderExtras(); updatePriceLabels(); syncUrnControls(); updateTota
     return 'NX-'+key.replace('nextli_remision_','')+'-'+String(n).padStart(3,'0');
   }
   function noteRows() {
-    const urn = getUrn(state.urnId);
-    const extras = INV.extras();
-    const byId = id => extras.find(x => x.id === id);
-    const rowExtra = id => { const x=byId(id); const q=extraQty(id); return {desc:x?.name || id, price:Number(x?.price||0)*q, unit:Number(x?.price||0), qty:q, checked:q>0}; };
-    const rows = [
-      {desc:'Cremación Individual (100% cenizas, urna, placa, certificado, foto testigo)',price:0,unit:0,qty:1,checked:!isCom()},
-      {desc:'Cremación sin Recuperación / Comunitaria',price:isCom()?calcBase():0,unit:isCom()?calcBase():0,qty:1,checked:isCom()},
-      {desc:'Eutanasia Asistida (Clínica Salud Animal)',price:0,unit:0,qty:1,checked:false},
-      {...rowExtra('plus'),desc:'Paquete Plus — Homenaje Completo (Marco/acrílico, huella en aluminio, vinilo)',checked:!!state.plus},
-      {...rowExtra('huella'),desc:'Huella con pelo de mascota',checked:!!state.huella},
-      {...rowExtra('cert'),desc:'Certificado físico adicional',checked:!!state.cert},
-      {desc:'Urna seleccionada: '+(urn?.name||'________________')+' | Color vinilo: '+(state.color||'________')+' | ( ) Plateado  ( ) Blanco  ( ) Negro  ( ) Dorado',price:(!isCom()&&urn)?calcBase():0,unit:(!isCom()&&urn)?calcBase():0,qty:1,checked:!!urn}
-    ];
+    const urn = getUrn(state.urnId), extras = INV.extras();
+    const rows = [];
+    const qExtra = id => Math.max(0, Number(extraQty(id)) || 0);
+    if (isCom()) {
+      const price = calcBase();
+      rows.push({desc:'Cremación comunitaria / sin recuperación de cenizas',price,unit:price,qty:1,checked:true});
+    } else {
+      rows.push({desc:'Cremación individual (recuperación de cenizas, urna, placa y certificado)',price:0,unit:0,qty:1,checked:true});
+      if (urn) {
+        const price = calcBase();
+        const color = state.color ? ' | Vinilo: '+state.color : '';
+        rows.push({desc:'Urna seleccionada: '+urn.name+(color?' '+color:''),price,unit:price,qty:1,checked:true});
+      }
+    }
+    if (state.plus) { const q=qExtra('plus')||1,x=extras.find(v=>v.id==='plus'); rows.push({desc:x?.name||'Paquete Plus — Homenaje completo',price:Number(x?.price||0)*q,unit:Number(x?.price||0),qty:q,checked:true}); }
+    if (state.huella) { const q=qExtra('huella')||1,x=extras.find(v=>v.id==='huella'); rows.push({desc:x?.name||'Huella con pelo de mascota',price:Number(x?.price||0)*q,unit:Number(x?.price||0),qty:q,checked:true}); }
+    if (state.cert) { const q=qExtra('cert')||1,x=extras.find(v=>v.id==='cert'); rows.push({desc:x?.name||'Certificado físico adicional',price:Number(x?.price||0)*q,unit:Number(x?.price||0),qty:q,checked:true}); }
     const used=['plus','huella','cert'];
-    extras.filter(x=>!used.includes(x.id)&&extraQty(x.id)>0).forEach(x=>{
-      const q=extraQty(x.id); rows.push({desc:x.name,price:Number(x.price||0)*q,unit:Number(x.price||0),qty:q,checked:true});
-    });
-    return rows;
+    extras.filter(x=>!used.includes(x.id)&&qExtra(x.id)>0).forEach(x=>{const q=qExtra(x.id);rows.push({desc:x.name,price:Number(x.price||0)*q,unit:Number(x.price||0),qty:q,checked:true});});
+    return rows.filter(r=>r.checked);
   }
   function renderPaper() {
     const rows=noteRows(), pay=paymentInfo(), date=new Date();
     const dateText=date.toLocaleDateString('es-MX');
     const fmtMoney=v=>Number(v||0).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});
-    const serviceLines=rows.map((r,ri)=>`<tr><td class="rn-check"><span class="rn-checkmark">${r.checked?'☑':'□'}</span></td><td contenteditable="true" data-note-edit="row-${ri}-desc">${escHtml(r.desc)}</td><td class="rn-money" contenteditable="true" data-note-edit="row-${ri}-price">${r.price?('$ '+fmtMoney(r.unit||r.price)):'$ __________'}</td><td class="rn-money" contenteditable="true" data-note-edit="row-${ri}-amount">${r.price?('$ '+fmtMoney(r.price)):'$ __________'}</td></tr>`).join('');
+    const serviceLines=rows.map((r,ri)=>`<tr><td class="rn-check"><span class="rn-checkmark">✓</span><small>${r.qty>1?r.qty+' pzas.':'1'}</small></td><td contenteditable="true" data-note-edit="row-${ri}-desc">${escHtml(r.desc)}</td><td class="rn-money" contenteditable="true" data-note-edit="row-${ri}-price">${r.unit?('$ '+fmtMoney(r.unit)):'Incluido'}</td><td class="rn-money" contenteditable="true" data-note-edit="row-${ri}-amount">${r.price?('$ '+fmtMoney(r.price)):'Incluido'}</td></tr>`).join('');
+    const field=(label,key,value)=>value&&value!=='—'?'<p contenteditable="true" data-note-edit="'+key+'">'+escHtml(label+': '+value)+'</p>':'';
+    const owner=[field('Nombre','owner',val('ownerName')),field('WhatsApp','phone',val('ownerPhone')),field('Dirección','address',val('ownerAddress'))].filter(Boolean).join('');
+    const pet=[field('Mascota','pet',val('petName')),field('Especie / raza','species',speciesLabel()+(state.breed?' / '+state.breed:'')),field('Peso','weight',SIZE_LABEL[state.weight]||''),field('Fecha de defunción','death',fmtDate()==='—'?'':fmtDate())].filter(Boolean).join('');
+    const observations=[val('farewellPhrase')==='—'?'':val('farewellPhrase'),extraNoteText.trim()].filter(Boolean).join('\n');
     paper.innerHTML=`<article class="remission-sheet">
       <header class="rn-header">
         <div class="rn-brand"><img src="/images/nextli-logo.png" alt="Emblema NEXTLI"><strong>NEXTLI</strong><small>Cremación de Mascotas<br>con Amor en México</small></div>
         <div class="rn-title"><h2>NOTA DE REMISIÓN</h2><div>Folio N°: <span contenteditable="true" data-note-edit="folio">${escHtml(folio)}</span></div><div>Fecha: <span contenteditable="true" data-note-edit="date">${dateText}</span></div></div>
       </header>
-      <div class="rn-contact">Tel / WhatsApp: 55 2188 9698 | Jorto 226, México 2da Secc, 57620 Cd. Nezahualcóyotl, Méx.</div>
+      <div class="rn-contact">Tel / WhatsApp: 55 2188 9698 | José Bernardo Couto 226, 57620 Cd. Nezahualcóyotl, Méx.</div>
       <div class="rn-two">
-        <section><h3>Datos del Tutor</h3><p contenteditable="true" data-note-edit="owner">Nombre completo: ${escHtml(val('ownerName'))}</p><p contenteditable="true" data-note-edit="phone">Teléfono / WhatsApp: ${escHtml(val('ownerPhone'))}</p><p contenteditable="true" data-note-edit="address">Dirección de recolección / entrega: ${escHtml(val('ownerAddress'))}</p></section>
-        <section><h3>Datos del Compañero</h3><p contenteditable="true" data-note-edit="pet">Nombre de la mascota: ${escHtml(val('petName'))}</p><p contenteditable="true" data-note-edit="species">Especie / Raza: ${escHtml(speciesLabel()+' / '+(state.breed||'—'))}</p><p contenteditable="true" data-note-edit="weight">Peso aprox. (kg): ${escHtml(SIZE_LABEL[state.weight]||'—')}</p><p contenteditable="true" data-note-edit="death">Fecha de defunción: ${escHtml(fmtDate())}</p></section>
+        <section><h3>Datos del Tutor</h3>${owner||'<p>Datos del tutor por completar</p>'}</section>
+        <section><h3>Datos del Compañero</h3>${pet||'<p>Datos de la mascota por completar</p>'}</section>
       </div>
-      <table class="rn-table"><thead><tr><th>Cant.</th><th>Descripción del Servicio / Personalización</th><th>Precio Unit.</th><th>Importe</th></tr></thead><tbody>${serviceLines}<tr class="rn-blank"><td></td><td contenteditable="true" data-note-edit="blank">________________________________________<br>________________________________________</td><td contenteditable="true">$ ________</td><td contenteditable="true">$ ________</td></tr></tbody></table>
+      <table class="rn-table"><thead><tr><th>Cant.</th><th>Descripción del Servicio / Personalización</th><th>Precio Unit.</th><th>Importe</th></tr></thead><tbody>${serviceLines}</tbody></table>
       <div class="rn-bottom">
-        <section class="rn-observations"><label>Frase de despedida / Observaciones:</label><div contenteditable="true" data-note-edit="observations" class="rn-lines">${escHtml([val('farewellPhrase')==='—'?'':val('farewellPhrase'),extraNoteText.trim()].filter(Boolean).join('\n'))}</div></section>
-        <section class="rn-totals"><p>Subtotal: <b contenteditable="true" data-note-edit="subtotal">$ ${fmtMoney(total())}</b></p><p>Anticipo: <b contenteditable="true" data-note-edit="deposit">$ ${fmtMoney(pay.paid)}</b></p><strong>Total a pagar: <span contenteditable="true" data-note-edit="total">$ ${fmtMoney(pay.balance)}</span> MXN</strong><p class="rn-payment">□ Efectivo &nbsp; □ Transferencia &nbsp; □ Tarjeta</p></section>
+        <section class="rn-observations"><label>Frase de despedida / Observaciones:</label><div contenteditable="true" data-note-edit="observations" class="rn-lines">${escHtml(observations)}</div></section>
+        <section class="rn-totals"><p>Subtotal: <b contenteditable="true" data-note-edit="subtotal">$ ${fmtMoney(total())}</b></p><p>Anticipo: <b contenteditable="true" data-note-edit="deposit">$ ${fmtMoney(pay.paid)}</b></p><strong>Total a pagar: <span contenteditable="true" data-note-edit="total">$ ${fmtMoney(pay.balance)}</span> MXN</strong><p class="rn-payment">Estado del pago: ${escHtml(paymentLabel())}</p></section>
       </div>
       <div class="rn-signatures"><div>Firma de conformidad<br>del Tutor</div><div>Recibido / Entregado<br>por NEXTLI</div></div>
       <footer>“Pequeños detalles que guardan su huella por siempre.”</footer>
