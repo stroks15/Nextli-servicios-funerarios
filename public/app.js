@@ -112,7 +112,7 @@ function buildUrnCards() {
     const c = document.createElement('div');
     c.className = 'pcard'; c.dataset.id = u.id; c.setAttribute('role', 'button'); c.tabIndex = 0;
     c.innerHTML = `<div class="pcard-media"><span class="pcard-badge" hidden></span><img src="${esc(u.img)}" alt="${esc(u.name)}" loading="lazy" decoding="async"></div>
-      <div class="pcard-body"><h5>${esc(u.name)}</h5><p class="pcard-desc">${esc(u.desc)}</p><div class="pcard-price"></div></div>`;
+      <div class="pcard-body"><h5>${esc(u.name)}</h5><p class="pcard-desc">${esc(u.desc)}</p><small class="pcard-capacity"></small><div class="pcard-price"></div></div>`;
     localizeImg(c.querySelector('img'));
     const pick = () => selectUrn(u.id);
     c.onclick = pick; c.onkeydown = e => cardKey(e, pick);
@@ -135,9 +135,10 @@ function refreshUrnCards() {
     badge.hidden = !(u.soldOut || !inSize);
     badge.textContent = u.soldOut ? 'Agotada por ahora' : 'No disponible en este tamaño';
     const sizes = Object.values(u.prices);
+    const capacity=c.querySelector('.pcard-capacity');if(capacity)capacity.textContent=u.capacityMl?'Capacidad aproximada: '+u.capacityMl+' ml de cenizas':'';
     c.querySelector('.pcard-price').innerHTML = size
       ? (inSize ? money(u.prices[size]) + ' <small>MXN</small>' : '<small>Prueba con otro modelo</small>')
-      : 'Desde ' + money(Math.min(...sizes)) + ' <small>MXN</small>';
+      : 'Desde ' + money(Math.min(...sizes)) + ' <small>MXN</small> ';
   });
 }
 
