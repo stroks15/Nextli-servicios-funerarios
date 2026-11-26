@@ -14,6 +14,7 @@ const catSize = { Siamés: 'chico', Persa: 'chico', 'Maine Coon': 'mediano', Rag
 
 let workerMode = false, logoTaps = 0, workerUnlockArmed = false, workerUnlockTimer = null;
 const WORKER_UNLOCK_WINDOW = 3000;
+let extraNoteText = '';
 let state = { extraQuantities: {}, service: null, species: '', otherSpecies: '', breed: '', weight: '', weightConfirmed: false, urnId: null, plus: false, huella: false, cert: false, plusQty: 0, huellaQty: 0, certQty: 0, petColor: '', petColorOther: '', color: '', frame: '', paymentStatus: 'No pagado', paymentOther: '' };
 
 const $ = id => document.getElementById(id);
@@ -320,7 +321,8 @@ function buildMessage(audience) {
       '*CLIENTE*',
       `*Propietario:* ${val('ownerName')}`,
       `*Teléfono:* ${val('ownerPhone')}`,
-      `*Dirección:* ${val('ownerAddress')}`
+      `*Dirección:* ${val('ownerAddress')}`,
+      ...(extraNoteText.trim() ? ['', '*NOTA EXTRA:*', extraNoteText.trim()] : [])
     ];
     const ml = mapsLink(val('ownerAddress')); if (ml) lines.push(`*Mapa:* ${ml}`);
     lines.push('',
@@ -348,7 +350,7 @@ ${isCom() ? '' : `*Urna:* ${urn?.name || '—'}\n`}*Tamaño / peso:* ${SIZE_LABE
 *Teléfono:* ${val('ownerPhone')}
 *Dirección:* ${val('ownerAddress')}
 *Fecha de defunción:* ${fmtDate()}
-*Frase:* ${val('farewellPhrase')}`;
+*Frase:* ${val('farewellPhrase')}${extraNoteText.trim() ? '\\n*Nota extra:* ' + extraNoteText.trim() : ''}`;
 
   if (audience === 'recibo') { // trabajador → cliente: incluye su estado de pago
     const p = paymentInfo();
@@ -364,7 +366,13 @@ ${isCom() ? '' : `*Urna:* ${urn?.name || '—'}\n`}*Tamaño / peso:* ${SIZE_LABE
 function line(a, b) { return `<div class="summary-line"><span>${a}</span><b>${esc(b)}</b></div>`; }
 function renderSummary() {
   const urn = getUrn(state.urnId);
-  $('summaryBox').innerHTML = `<div class="summary-box"><h4>Resumen de tu solicitud</h4>${line('Servicio', isCom() ? 'Cremación Comunitaria' : 'Cremación Individual')}${line('Mascota', val('petName'))}${line('Especie / raza', speciesLabel() + (state.breed ? ' / ' + state.breed : ''))}${line('Color', petColorLabel())}${line('Tamaño / peso', SIZE_LABEL[state.weight] || '—')}${isCom() ? '' : line('Urna', urn?.name || '—')}${extrasList().map(x => line('Adicional', x)).join('')}${line('Propietario', val('ownerName'))}${line('Teléfono', val('ownerPhone'))}${line('Dirección', val('ownerAddress'))}${workerMode ? line('Pago', paymentLabel()) + line('Saldo pendiente', money(paymentInfo().balance) + ' MXN') : ''}<div class="summary-total"><span>Total estimado</span><span>${money(total())} MXN</span></div></div>`;
+  const extra = extraNoteText || '';
+  $('summaryBox').innerHTML = `<div class="summary-box"><h4>Resumen de tu solicitud</h4>${line('Servicio', isCom() ? 'Cremación Comunitaria' : 'Cremación Individual')}${line('Mascota', val('petName'))}${line('Especie / raza', speciesLabel() + (state.breed ? ' / ' + state.breed : ''))}${line('Color', petColorLabel())}${line('Tamaño / peso', SIZE_LABEL[state.weight] || '—')}${isCom() ? '' : line('Urna', urn?.name || '—')}${extrasList().map(x => line('Adicional', x)).join('')}${line('Propietario', val('ownerName'))}${line('Teléfono', val('ownerPhone'))}${line('Dirección', val('ownerAddress'))}${workerMode ? line('Pago', paymentLabel()) + line('Saldo pendiente', money(paymentInfo().balance) + ' MXN') : ''}<div class="summary-total"><span>Total estimado</span><span>${money(total())} MXN</span></div><div class="summary-extra"><label for="extraSummaryNote">Nota extra / observaciones (se incluirá en WhatsApp y en la Nota de Remisión)</label><textarea id="extraSummaryNote" rows="3" maxlength="1200" placeholder="Agrega indicaciones, observaciones o una nota especial…">${esc(extra)}</textarea></div></div>`;
+  const extraInput = $('extraSummaryNote');
+  if (extraInput) extraInput.addEventListener('input', e => {
+    extraNoteText = e.target.value;
+    $('sendWa').href = 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(buildMessage('cliente'));
+  });
   $('sendWa').href = 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(buildMessage('cliente'));
 }
 function requiredOk() {
@@ -460,9 +468,14 @@ $('sendClientWa').onclick = () => {
   if (!workerMode) return;
   if (!requiredOk()) { alert('Completa primero todos los datos obligatorios.'); return; }
   const phone = normalizePhone(val('ownerPhone'));
-  if (phone.length < 10) { alert('Revisa el teléfono del cliente: parece incompleto.'); return; }
+  if (!/^\\d{11,15}$/.test(phone)) { alert('Revisa el teléfono del cliente: parece incompleto.'); return; }
   window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(buildMessage('recibo')), '_blank');
-  generateCertificate();
+};
+$('sendChuchoWa').onclick = () => {
+  if (!workerMode) return;
+  if (!requiredOk()) { alert('Completa primero todos los datos obligatorios.'); return; }
+  const message = '*ORDEN NEXTLI PARA CHUCHO*\\n\\n' + buildMessage('grupo');
+  window.open('https://wa.me/527121483834?text=' + encodeURIComponent(message), '_blank');
 };
 $('downloadCertificate').onclick = generateCertificate;
 
@@ -619,87 +632,76 @@ renderUrns(); renderExtras(); updatePriceLabels(); syncUrnControls(); updateTota
 })();
 
 
-/* ---------- Nota de Remisión (solo Modo Trabajador) ---------- */
+/* ---------- Nota de Remisión visual NEXTLI (solo Modo Trabajador) ---------- */
 (function initRemissionNote() {
-  const openBtn = $('viewRemissionNote');
-  const overlay = $('remissionNoteOverlay');
-  const noteField = $('remissionNoteText');
-  const extraField = $('remissionExtraNotes');
-  if (!openBtn || !overlay || !noteField || !extraField) return;
-  function noteValue() {
-    let content = noteField.value.trim();
-    const extra = extraField.value.trim();
-    if (extra) content += (content ? '\n\n' : '') + 'NOTAS EXTRAS\n' + extra;
-    return content;
+  const openBtn = $('viewRemissionNote'), overlay = $('remissionNoteOverlay'), paper = $('remissionNotePaper');
+  if (!openBtn || !overlay || !paper) return;
+  const chuchoPhone = '527121483834';
+  let folio = '';
+  const escHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const dateParts = d => { const p = d.split('-'); return p.length === 3 ? p[2]+'/'+p[1]+'/'+p[0] : d; };
+  function nextFolio() {
+    const d = new Date(), key = 'nextli_remision_' + d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');
+    let n = 1; try { n = (+localStorage.getItem(key) || 0)+1; localStorage.setItem(key,String(n)); } catch(e) {}
+    return 'NX-'+key.replace('nextli_remision_','')+'-'+String(n).padStart(3,'0');
   }
-  function buildRemissionNote() {
-    const urn = getUrn(state.urnId);
-    const pay = paymentInfo();
-    const lines = [
-      'NEXTLI · NOTA DE REMISIÓN',
-      'Fecha de elaboración: ' + nowStamp(),
-      '----------------------------------------',
-      'SERVICIO',
-      'Tipo: ' + (isCom() ? 'Cremación comunitaria' : 'Cremación individual'),
-      'Mascota: ' + val('petName'),
-      'Especie: ' + speciesLabel(),
-      'Raza: ' + (state.breed || '—'),
-      'Color: ' + petColorLabel(),
-      'Edad: ' + val('petAge'),
-      'Fecha de defunción: ' + fmtDate(),
-      'Urna: ' + (isCom() ? 'No aplica' : (urn?.name || '—')),
-      'Complementos: ' + (extrasList().join(', ') || 'Ninguno'),
-      '----------------------------------------',
-      'DATOS DEL CLIENTE',
-      'Nombre: ' + val('ownerName'),
-      'Teléfono: ' + val('ownerPhone'),
-      'Dirección: ' + val('ownerAddress'),
-      '----------------------------------------',
-      'COBRO (uso interno NEXTLI)',
-      'Total: ' + money(pay.total) + ' MXN',
-      'Estado del pago: ' + (pay.label || 'No pagado'),
-      'Abonado: ' + money(pay.paid) + ' MXN',
-      'Saldo pendiente: ' + money(pay.balance) + ' MXN',
-      '----------------------------------------',
-      'Recibido / entregado por: __________________________',
-      'Firma: ____________________________________________'
-    ];
-    return lines.join('\n');
+  function noteRows() {
+    const urn = getUrn(state.urnId), ext = INV.extras();
+    const rows = [];
+    if (isCom()) rows.push({desc:'Cremación sin recuperación / Comunitaria',price:total(),qty:1,checked:true});
+    else {
+      const extrasTotal = ext.reduce((s,x)=>s+(Number(state.extraQuantities[x.id]||0)*Number(x.price||0)),0);
+      const urnPrice = Number(urn?.prices?.[state.weight]||0);
+      const base = Math.max(0,total()-extrasTotal-urnPrice);
+      rows.push({desc:'Cremación individual (recuperación de cenizas)',price:base,qty:1,checked:true});
+      if (extrasTotal) ext.forEach(x=>{const q=Number(state.extraQuantities[x.id]||0);if(q)rows.push({desc:x.name,price:Number(x.price||0)*q,qty:q,checked:true});});
+      if (urn) rows.push({desc:'Urna seleccionada: '+urn.name+(state.color?' · Vinilo '+state.color:''),price:urnPrice,qty:1,checked:true});
+    }
+    if (!rows.length) rows.push({desc:'Servicio NEXTLI',price:total(),qty:1,checked:true});
+    return rows;
   }
-  function closeNote() { overlay.classList.remove('open'); overlay.setAttribute('aria-hidden','true'); }
-  function openNote() {
-    if (!workerMode) { alert('La Nota de Remisión está disponible únicamente en Modo Trabajador.'); return; }
-    noteField.value = buildRemissionNote();
-    extraField.value = '';
-    overlay.classList.add('open'); overlay.setAttribute('aria-hidden','false');
-    noteField.focus();
+  function renderPaper() {
+    const rows=noteRows(), pay=paymentInfo(), date=new Date();
+    const dateText=date.toLocaleDateString('es-MX');
+    const serviceLines=rows.map((r,i)=>`<tr><td class="rn-check"><span class="rn-checkmark">${r.checked?'☑':'□'}</span></td><td contenteditable="true" data-note-edit="desc">${escHtml(r.desc)}</td><td class="rn-money" contenteditable="true" data-note-edit="price">$ ${Number(r.price||0).toLocaleString('es-MX')}</td><td class="rn-money" contenteditable="true" data-note-edit="amount">$ ${Number(r.price||0).toLocaleString('es-MX')}</td></tr>`).join('');
+    const extraRows='<tr><td class="rn-check">□</td><td contenteditable="true" data-note-edit="desc">Personalización / observaciones de servicio</td><td contenteditable="true" class="rn-money" data-note-edit="price">—</td><td contenteditable="true" class="rn-money" data-note-edit="amount">—</td></tr>';
+    paper.innerHTML=`<article class="remission-sheet">
+      <header class="rn-header"><div class="rn-brand"><img src="/images/nextli-logo.png" alt="NEXTLI"><strong>NEXTLI</strong><small>Cremación de Mascotas<br>con Amor en México</small></div><div class="rn-title"><h2>NOTA DE REMISIÓN</h2><div>Folio N°: <span contenteditable="true" data-note-edit="folio">${escHtml(folio)}</span></div><div>Fecha: <span contenteditable="true" data-note-edit="date">${dateText}</span></div></div></header>
+      <div class="rn-contact">Tel / WhatsApp: 55 2188 9698 | José Bernardo Couto 226, México 2da Secc, 57620 Cd. Nezahualcóyotl, Méx.</div>
+      <div class="rn-two"><section><h3>Datos del Tutor</h3><p>Nombre completo: <b contenteditable="true" data-note-edit="owner">${escHtml(val('ownerName'))}</b></p><p>Teléfono / WhatsApp: <b contenteditable="true" data-note-edit="phone">${escHtml(val('ownerPhone'))}</b></p><p>Dirección: <b contenteditable="true" data-note-edit="address">${escHtml(val('ownerAddress'))}</b></p></section><section><h3>Datos del Compañero</h3><p>Nombre: <b contenteditable="true" data-note-edit="pet">${escHtml(val('petName'))}</b></p><p>Especie / Raza: <b contenteditable="true" data-note-edit="species">${escHtml(speciesLabel()+' / '+(state.breed||'—'))}</b></p><p>Peso aprox. (kg): <b contenteditable="true" data-note-edit="weight">${escHtml(SIZE_LABEL[state.weight]||'—')}</b></p><p>Fecha de defunción: <b contenteditable="true" data-note-edit="death">${escHtml(fmtDate())}</b></p></section></div>
+      <table class="rn-table"><thead><tr><th>Cant.</th><th>Descripción del Servicio / Personalización</th><th>Precio Unit.</th><th>Importe</th></tr></thead><tbody>${serviceLines}${extraRows}</tbody></table>
+      <div class="rn-bottom"><section class="rn-observations"><label>Frase de despedida / Observaciones:</label><div contenteditable="true" data-note-edit="observations" class="rn-lines">${escHtml([val('farewellPhrase')==='—'?'':val('farewellPhrase'),extraNoteText.trim()].filter(Boolean).join('\n'))}</div></section><section class="rn-totals"><p>Subtotal: <b contenteditable="true" data-note-edit="subtotal">$ ${total().toLocaleString('es-MX')}</b></p><p>Anticipo: <b contenteditable="true" data-note-edit="deposit">$ ${Number(pay.paid||0).toLocaleString('es-MX')}</b></p><strong>Total a pagar: <span contenteditable="true" data-note-edit="total">$ ${Number(pay.balance||total()).toLocaleString('es-MX')}</span> MXN</strong><p class="rn-payment">□ Efectivo &nbsp; □ Transferencia &nbsp; □ Tarjeta</p></section></div>
+      <div class="rn-signatures"><div>Firma de conformidad del Tutor</div><div>Recibido / Entregado por NEXTLI</div></div><footer>“Pequeños detalles que guardan su huella por siempre.”</footer>
+    </article>`;
   }
-  function downloadNote() {
-    if (!workerMode) return;
-    const content = noteValue();
-    if (!content) return;
-    const blob = new Blob([content], {type:'text/plain;charset=utf-8'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'Nota-de-Remision-' + safe(val('petName')) + '-' + safe(val('ownerName')) + '.txt';
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 15000);
+  function noteText() {
+    const clone=paper.querySelector('.remission-sheet'); if(!clone)return '';
+    clone.querySelectorAll('[contenteditable="true"]').forEach(el=>el.removeAttribute('contenteditable'));
+    return clone.innerText || clone.textContent || '';
   }
-  function sendNoteWhatsApp() {
-    if (!workerMode) return;
-    const phone = normalizePhone(val('ownerPhone'));
-    if (phone.length < 10) { alert('Revisa el teléfono del cliente antes de enviar la Nota de Remisión.'); return; }
-    const message = noteValue();
-    if (!message) return;
-    const url = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(message);
-    const opened = window.open(url, '_blank', 'noopener,noreferrer');
-    if (!opened) window.location.href = url;
+  function closeNote(){overlay.classList.remove('open');overlay.setAttribute('aria-hidden','true');}
+  function openNote(){
+    if(!workerMode){alert('La Nota de Remisión está disponible únicamente en Modo Trabajador.');return;}
+    if(!folio)folio=nextFolio(); renderPaper();
+    overlay.classList.add('open');overlay.setAttribute('aria-hidden','false');
   }
-  openBtn.addEventListener('click', openNote);
-  $('closeRemissionNote').addEventListener('click', closeNote);
-  $('cancelRemissionNote').addEventListener('click', closeNote);
-  $('downloadRemissionNote').addEventListener('click', downloadNote);
-  $('whatsappRemissionNote').addEventListener('click', sendNoteWhatsApp);
-  overlay.addEventListener('click', e => { if (e.target === overlay) closeNote(); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && overlay.classList.contains('open')) closeNote(); });
+  function downloadNote(){
+    if(!workerMode)return;
+    const sheet=paper.querySelector('.remission-sheet');if(!sheet)return;
+    const win=window.open('','_blank');
+    if(!win){alert('Permite abrir la ventana para imprimir o guardar la Nota como PDF.');return;}
+    const css=[...document.querySelectorAll('link[rel="stylesheet"]')].map(x=>'<link rel="stylesheet" href="'+x.href+'">').join('');
+    win.document.open();win.document.write('<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Nota de Remisión NEXTLI</title>'+css+'<style>body{background:#fff!important;margin:0!important;padding:0!important}.remission-sheet{width:190mm!important;min-height:277mm!important;margin:0 auto!important;box-shadow:none!important;border:0!important}.remission-overlay,.certificate-preview-overlay{display:none!important}@page{size:A4;margin:10mm}</style></head><body>'+sheet.outerHTML+'<script>window.onload=function(){setTimeout(function(){window.print()},350)}<\/script></body></html>');win.document.close();
+  }
+  function shareNote(){
+    if(!workerMode)return;
+    const phone=normalizePhone(val('ownerPhone'));if(!/^\d{11,15}$/.test(phone)){alert('Revisa el teléfono del cliente.');return;}
+    const message='*NOTA DE REMISIÓN NEXTLI*\n\n'+noteText()+(extraNoteText.trim()?'\n\nNOTA EXTRA:\n'+extraNoteText.trim():'');
+    window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(message),'_blank');
+  }
+  openBtn.addEventListener('click',openNote);
+  $('closeRemissionNote').addEventListener('click',closeNote);$('cancelRemissionNote').addEventListener('click',closeNote);
+  $('downloadRemissionNote').addEventListener('click',downloadNote);$('whatsappRemissionNote').addEventListener('click',shareNote);
+  overlay.addEventListener('click',e=>{if(e.target===overlay)closeNote();});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&overlay.classList.contains('open'))closeNote();});
 })();
