@@ -202,9 +202,9 @@
     const built = BASE_URNS.map(u => {
       const o = over.urns[u.id] || {}, prices = Object.assign({}, u.prices);
       if (o.prices) Object.keys(o.prices).forEach(k => { if (o.prices[k] === null) delete prices[k]; else if (o.prices[k] > 0) prices[k] = o.prices[k]; });
-      return Object.assign({}, u, o, { id: u.id, name: o.name || u.name, desc: o.desc || u.desc, defaultImg: u.img, img: o.img || u.img, prices, stock: Number.isFinite(o.stock) ? o.stock : null, soldOut: !!o.soldOut || (Number.isFinite(o.stock) && o.stock <= 0), edited: !!over.urns[u.id], custom: false });
+      return Object.assign({}, u, o, { id: u.id, name: o.name || u.name, desc: o.desc || u.desc, defaultImg: u.img, img: o.img || u.img, prices, stock: Number.isFinite(o.stock) ? o.stock : null, capacityMl: Number.isFinite(o.capacityMl) ? o.capacityMl : null, soldOut: !!o.soldOut || (Number.isFinite(o.stock) && o.stock <= 0), edited: !!over.urns[u.id], custom: false });
     });
-    return built.filter(u => !over.urns[u.id]?.deleted).concat(Object.values(over.customUrns || {}).map(u => Object.assign({}, u, { defaultImg: u.img, prices: u.prices || {}, stock: Number.isFinite(u.stock) ? u.stock : null, soldOut: !!u.soldOut || (Number.isFinite(u.stock) && u.stock <= 0), custom: true })));
+    return built.filter(u => !over.urns[u.id]?.deleted).concat(Object.values(over.customUrns || {}).map(u => Object.assign({}, u, { defaultImg: u.img, prices: u.prices || {}, stock: Number.isFinite(u.stock) ? u.stock : null, capacityMl: Number.isFinite(u.capacityMl) ? u.capacityMl : null, soldOut: !!u.soldOut || (Number.isFinite(u.stock) && u.stock <= 0), custom: true })));
   }
   function extras() {
     const built = BASE_EXTRAS.map(x => {
@@ -251,6 +251,7 @@
       const cur = over.customUrns[id];
       if ('soldOut' in patch) cur.soldOut = !!patch.soldOut;
       if ('img' in patch) cur.img = patch.img || cur.defaultImg || '';
+      if ('capacityMl' in patch) { if (patch.capacityMl == null) delete cur.capacityMl; else cur.capacityMl = patch.capacityMl; }
       if (patch.prices) cur.prices = Object.assign({}, cur.prices || {}, patch.prices);
       if (save()) emit();
       return;
@@ -258,6 +259,7 @@
     const cur = over.urns[id] || (over.urns[id] = {});
     if ('soldOut' in patch) { if (patch.soldOut) cur.soldOut = true; else delete cur.soldOut; }
     if ('img' in patch) { if (patch.img) cur.img = patch.img; else delete cur.img; }
+    if ('capacityMl' in patch) { if (patch.capacityMl == null) delete cur.capacityMl; else cur.capacityMl = patch.capacityMl; }
     if (patch.prices) {
       cur.prices = cur.prices || {};
       const base = (BASE_URNS.find(u => u.id === id) || { prices: {} }).prices;
@@ -541,7 +543,7 @@
     <div class="adm-prices">${SIZES.map(([k, l]) => `
       <label>${l}<input type="text" inputmode="numeric" data-size="${k}" value="${u.prices[k] || ''}" placeholder="—"></label>`).join('')}
     </div>
-    <small class="nx-muted">Deja vacío un tamaño para no ofrecerlo.</small>
+    <small class="nx-muted">Deja vacío un tamaño para no ofrecerlo.</small><label class="adm-capacity-label">Capacidad aproximada de cenizas (ml)<input type="number" min="1" step="1" inputmode="numeric" data-capacity="1" value="${Number.isFinite(u.capacityMl)?u.capacityMl:''}" placeholder="Sin especificar"></label>
   </div>
   <div class="adm-row-actions"><button type="button" class="nx-btn ghost" data-act="edit">Editar</button><button type="button" class="nx-btn danger" data-act="delete">Eliminar</button><button class="adm-stock ${u.soldOut ? 'out' : 'in'}" data-act="stock">${u.soldOut ? 'Agotado' : 'Disponible'}</button></div>
 </div>`).join('');
@@ -609,7 +611,11 @@
     const body = $('adminBody'); if (!body || !body.contains(e.target)) return;
     const row = e.target.closest('.adm-row'); if (!row) return;
     const id = row.dataset.id, kind = row.dataset.kind, inp = e.target;
-    if (kind === 'urn' && inp.dataset.size) {
+    if (kind === 'urn' && inp.dataset.capacity) {
+      const v=inp.value.trim()===''?null:num(inp.value);
+      if(v!==null&&(!Number.isInteger(v)||v<1)){toast('La capacidad debe ser un número de ml mayor que cero.');inp.value=urns().find(u=>u.id===id).capacityMl||'';return;}
+      patchUrn(id,{capacityMl:v});inp.value=v||'';toast('Capacidad de la urna guardada');
+    } else if (kind === 'urn' && inp.dataset.size) {
       const v = num(inp.value);
       const base = urns().find(u => u.id === id).prices;
       const others = Object.keys(base).filter(k => k !== inp.dataset.size).length;
