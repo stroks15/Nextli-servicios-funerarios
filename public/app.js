@@ -765,7 +765,7 @@ renderUrns(); renderExtras(); updatePriceLabels(); syncUrnControls(); updateTota
     const serviceLines=rows.map((r,ri)=>`<tr><td class="rn-check"><span class="rn-checkmark">✓</span><small>${r.qty>1?r.qty+' pzas.':'1'}</small></td><td contenteditable="true" data-note-edit="row-${ri}-desc">${escHtml(r.desc)}</td><td class="rn-money" contenteditable="true" data-note-edit="row-${ri}-price">${r.unit?('$ '+fmtMoney(r.unit)):'Incluido'}</td><td class="rn-money" contenteditable="true" data-note-edit="row-${ri}-amount">${r.price?('$ '+fmtMoney(r.price)):'Incluido'}</td></tr>`).join('');
     const field=(label,key,value)=>value&&value!=='—'?'<p contenteditable="true" data-note-edit="'+key+'">'+escHtml(label+': '+value)+'</p>':'';
     const owner=[field('Nombre','owner',val('ownerName')),field('WhatsApp','phone',val('ownerPhone')),field('Dirección','address',val('ownerAddress'))].filter(Boolean).join('');
-    const pet=[field('Mascota','pet',val('petName')),field('Especie / raza','species',speciesLabel()+(state.breed?' / '+state.breed:'')),field('Peso','weight',SIZE_LABEL[state.weight]||''),field('Fecha de defunción','death',fmtDate()==='—'?'':fmtDate())].filter(Boolean).join('');
+    const pet=[field('Mascota','pet',val('petName')),field('Especie / raza','species',speciesLabel()+(state.breed?' / '+state.breed:'')),field('Peso','weight',weightLabel(state.weight)||''),field('Fecha de defunción','death',fmtDate()==='—'?'':fmtDate())].filter(Boolean).join('');
     const observations=[val('farewellPhrase')==='—'?'':val('farewellPhrase'),extraNoteText.trim()].filter(Boolean).join('\n');
     paper.innerHTML=`<article class="remission-sheet">
       <header class="rn-header">
