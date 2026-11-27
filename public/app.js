@@ -466,6 +466,7 @@ $('species').onchange = e => {
 $('otherSpecies').oninput = e => { state.otherSpecies = e.target.value; updatePetFlow(); if (state.species === 'otro') { state.weight = ''; state.weightConfirmed = false; $('weightRange').value = ''; } };
 $('breed').onchange = e => { state.breed = e.target.value; autoWeight(); };
 $('catBreed').onchange = e => { state.breed = e.target.value; autoWeight(); };
+$('toggleWeightRanges')?.addEventListener('click',()=>{const box=$('weightRangeSettings'),btn=$('toggleWeightRanges');if(!box||!btn)return;box.hidden=!box.hidden;btn.setAttribute('aria-expanded',String(!box.hidden));});
 $('saveWeightRanges')?.addEventListener('click',saveWeightRanges);
 $('weightRange').onchange = e => {
   state.weight = e.target.value; state.weightConfirmed = false; updatePetFlow();
@@ -1022,7 +1023,7 @@ renderUrns(); renderExtras(); updatePriceLabels(); syncUrnControls(); updateTota
   $('saveProgressNow')?.addEventListener('click',()=>saveNow(true));
   document.addEventListener('input',scheduleSave,true);
   document.addEventListener('change',scheduleSave,true);
-  document.addEventListener('click',()=>setTimeout(scheduleSave,0),true);
+  document.addEventListener('click',e=>{if(e.target.closest('#saveProgressNow,#toggleWeightRanges,#saveWeightRanges'))return;setTimeout(scheduleSave,0);},true);
   document.addEventListener('input',e=>{const el=e.target;if(el&&el.matches&&el.matches('[data-note-edit]'))nextliNoteEditDraft[el.dataset.noteEdit]=el.innerText;},true);
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')saveNow(false);else scheduleSave();});
   window.addEventListener('pagehide',()=>saveNow(false));
