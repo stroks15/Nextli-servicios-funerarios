@@ -63,6 +63,45 @@ body.app-ready .welcome-screen{display:none}
 @media(max-width:480px){.welcome-screen{padding:15px}.welcome-card{padding:30px 22px;border-radius:22px}.welcome-copy{font-size:13px;line-height:1.8}.welcome-continue{width:100%}}
 
 .step-reveal{animation:nextliReveal .32s ease both;transform-origin:top}.extra-qty{display:flex;align-items:center;gap:10px;margin-top:12px}.extra-qty button{width:34px;height:34px;border:1px solid var(--gold);border-radius:50%;background:#fff;color:var(--navy);font-size:20px;font-weight:700;cursor:pointer}.extra-qty output{min-width:24px;text-align:center;font-weight:700;color:var(--navy)}.extra-qty button:disabled{opacity:.35;cursor:not-allowed}@keyframes nextliReveal{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+
+/* Configurador móvil tipo app: sin franjas blancas detrás de la barra azul */
+html,body{min-height:100%;background:#0b192c!important}
+.nextli-topbar{position:sticky;top:0;z-index:1000;background:#0b192c!important;border-bottom:1px solid rgba(212,175,55,.22);padding-top:env(safe-area-inset-top)}
+.nextli-topbar-inner{min-height:54px;padding:7px 14px;gap:10px}
+.nextli-brand strong{font-size:19px}
+.worker-trigger{font-size:11px;max-width:55vw;overflow:hidden;text-overflow:ellipsis;background:rgba(255,255,255,.04)}
+.config-page{background:linear-gradient(180deg,#0b192c 0,#132b46 220px,#0b192c 100%)!important;min-height:calc(100svh - 54px);padding:18px 12px calc(76px + env(safe-area-inset-bottom))!important}
+.config-page .container{max-width:760px;padding:0!important}
+.config-app-heading{margin:0 0 14px;padding:8px 4px 4px;color:#f3efe1}
+.config-app-heading span{display:block;color:#d9c58d;font:600 10px/1.4 Poppins,sans-serif;letter-spacing:.14em}
+.config-app-heading h1{margin:5px 0 4px;color:#fff;font:600 clamp(23px,6vw,31px)/1.15 'Playfair Display',serif}
+.config-app-heading p{margin:0;color:#bdc8d5;font:400 12px/1.5 Poppins,sans-serif}
+.wizard-card{background:#fbf7ee!important;border:1px solid rgba(231,206,131,.24)!important;border-radius:20px!important;box-shadow:0 18px 45px rgba(0,0,0,.3)!important;padding:clamp(14px,4vw,24px)!important}
+.progress-save-row{display:flex!important;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:8px 0 14px;padding:10px;border-radius:12px;background:#e7eee8;border:1px solid #d0ded3}
+.progress-save-status{margin:0!important;min-height:0!important;text-align:left!important;flex:1;font-size:10px!important}
+.progress-save-row button{padding:8px 12px!important;font-size:10px!important;white-space:nowrap}
+.weight-range-editor{margin:10px 0 16px}
+.weight-range-toggle{width:100%;border:1px solid #d6c89c;border-radius:10px;background:#fffaf0;color:#10233d;padding:10px 12px;text-align:left;font:600 12px Poppins,sans-serif}
+.weight-range-settings{margin-top:9px;padding:12px;border:1px solid #d9d2c1;border-radius:12px;background:#fff}
+.weight-range-settings>p{margin:0 0 10px;color:#667184;font:11px/1.5 Poppins,sans-serif}
+.weight-range-row{display:grid;grid-template-columns:minmax(70px,1fr) 1fr 1fr;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #ece8df;font:600 11px Poppins,sans-serif;color:#10233d}
+.weight-range-row label{display:flex;flex-direction:column;gap:4px;font-size:9px;color:#667184}
+.weight-range-row input{width:100%;min-width:0;padding:7px 8px;font-size:12px}
+.weight-range-row small{grid-column:2/4;font-size:9px;color:#667184;font-weight:400}
+.weight-range-settings .btn{margin-top:12px;width:100%;justify-content:center;padding:11px 16px;font-size:12px}
+@media(max-width:480px){
+ .nextli-topbar-inner{padding-left:12px;padding-right:12px}
+ .nextli-brand img{width:30px;height:30px;flex-basis:30px}
+ .nextli-brand strong{font-size:17px}
+ .worker-trigger{padding:9px 11px;font-size:10px}
+ .config-page{padding:14px 10px calc(68px + env(safe-area-inset-bottom))!important}
+ .config-app-heading{padding:7px 3px 2px;margin-bottom:11px}
+ .wizard-card{border-radius:17px!important;padding:14px 12px!important}
+ .weight-range-row{grid-template-columns:75px 1fr 1fr;gap:6px}
+ .progress-save-row{align-items:stretch}
+ .progress-save-row button{width:100%}
+}
+
 </style>
 </head>
 <body>
@@ -77,10 +116,9 @@ body.app-ready .welcome-screen{display:none}
   </div>
 </section>
 <header class="nextli-topbar"><div class="nextli-topbar-inner"><button class="nextli-brand" id="nextliTrigger" type="button" aria-label="NEXTLI — acceso de trabajador"><img src="/images/nextli-logo.png" alt="NEXTLI" width="36" height="36" decoding="async"><strong>NEXTLI</strong></button><button class="worker-trigger" id="workerButton" type="button">Personaliza tu despedida</button></div></header>
-<main class="config-page"><div class="container">
-<!-- Texto introductorio omitido: mostrar directamente el configurador -->
+<main class="config-page"><div class="container"><div class="config-app-heading"><span>NEXTLI · SERVICIOS FUNERARIOS</span><h1>Personaliza mi despedida</h1><p>Configurador de servicios para tu compañero</p></div>
 <div class="wizard-card">
-<div class="step-progress-label" id="stepProgressLabel">Paso 1 de 5</div><p class="progress-save-status worker-only" id="progressSaveStatus" role="status" aria-live="polite">Tu progreso se guardará automáticamente en este dispositivo.</p><div class="steps-track" id="stepsTrack"></div>
+<div class="step-progress-label" id="stepProgressLabel">Paso 1 de 5</div><div class="progress-save-row worker-only"><p class="progress-save-status" id="progressSaveStatus" role="status" aria-live="polite">El progreso se conserva hasta 5 minutos.</p><button type="button" class="btn btn-outline-dark" id="saveProgressNow">Guardar progreso ahora</button></div><div class="steps-track" id="stepsTrack"></div>
 
 <section class="step-panel active" data-step="1"><h3 class="step-title">Paso 1 · ¿Cómo quieres despedirte?</h3><p class="step-note">Elige el servicio que sientas más cercano a lo que necesitas.</p><div class="option-grid">
 <button class="option-card" data-service="individual"><h4>Cremación individual</h4><p>Recibirás sus cenizas, con todo el cuidado, en la urna que elijas.</p><div class="p" id="priceIndividual">Desde $1,750 MXN</div></button>
@@ -89,7 +127,7 @@ body.app-ready .welcome-screen{display:none}
 <button class="option-card option-card-wa" data-wa-text="Hola NEXTLI, necesito información sobre el servicio de eutanasia asistida."><h4>Eutanasia asistida</h4><p>Te acompañamos y coordinamos todo con calma, por WhatsApp.</p><div class="p wa-cta">💬 Escríbenos por WhatsApp</div></button>
 </div></section>
 
-<section class="step-panel" data-step="2"><h3 class="step-title">Paso 2 · Cuéntanos sobre tu compañero</h3><p class="step-note">Con estos datos te sugerimos el tamaño de urna más adecuado.</p><div class="field-grid"><div class="field"><label>Especie <span class="required-note">* obligatoria</span></label><select id="species"><option value="">Selecciona…</option><option value="perro">Perro</option><option value="gato">Gato</option><option value="otro">Otro</option></select></div><div class="field" id="otherSpeciesField" style="display:none"><label>¿Qué especie era?</label><input id="otherSpecies" placeholder="Ej. conejo, ave, hurón"></div><div class="field" id="breedField" style="display:none"><label>Raza</label><select id="breed"><option value="">Selecciona…</option><option>Chihuahueño</option><option>Poodle</option><option>Pug</option><option>Schnauzer</option><option>Yorkshire</option><option>Beagle</option><option>Bulldog</option><option>Cocker</option><option>Golden Retriever</option><option>Labrador</option><option>Pastor Alemán</option><option>Gran Danés</option><option>Husky</option><option>Mestizo / otra raza</option></select></div><div class="field" id="catBreedField" style="display:none"><label>Raza</label><select id="catBreed"><option value="">Selecciona…</option><option>Siamés</option><option>Persa</option><option>Maine Coon</option><option>Ragdoll</option><option>Bengalí</option><option>Británico de pelo corto</option><option>Mestizo / otra raza</option></select></div></div><div class="field" id="weightField" style="display:none"><label>Peso aproximado <span class="required-note">* obligatorio</span></label><select id="weightRange"><option value="">Selecciona…</option><option value="chico">0 – 10 kg</option><option value="mediano">11 – 25 kg</option><option value="grande">26 – 45 kg</option><option value="xl">Más de 45 kg</option></select></div><button type="button" id="confirmWeightBtn" class="btn btn-outline-dark" style="display:none;margin-top:8px">Confirmar peso y mostrar urnas</button><div id="manualWeightAction" style="display:none"><small>Sugerimos un peso según su raza; puedes ajustarlo si lo prefieres.</small> <button type="button" id="manualWeightBtn" class="btn btn-outline-dark" style="padding:7px 13px;font-size:11px">Cambiar peso</button></div>
+<section class="step-panel" data-step="2"><h3 class="step-title">Paso 2 · Cuéntanos sobre tu compañero</h3><p class="step-note">Con estos datos te sugerimos el tamaño de urna más adecuado.</p><div class="field-grid"><div class="field"><label>Especie <span class="required-note">* obligatoria</span></label><select id="species"><option value="">Selecciona…</option><option value="perro">Perro</option><option value="gato">Gato</option><option value="otro">Otro</option></select></div><div class="field" id="otherSpeciesField" style="display:none"><label>¿Qué especie era?</label><input id="otherSpecies" placeholder="Ej. conejo, ave, hurón"></div><div class="field" id="breedField" style="display:none"><label>Raza</label><select id="breed"><option value="">Selecciona…</option><option>Chihuahueño</option><option>Poodle</option><option>Pug</option><option>Schnauzer</option><option>Yorkshire</option><option>Beagle</option><option>Bulldog</option><option>Cocker</option><option>Golden Retriever</option><option>Labrador</option><option>Pastor Alemán</option><option>Gran Danés</option><option>Husky</option><option>Mestizo / otra raza</option></select></div><div class="field" id="catBreedField" style="display:none"><label>Raza</label><select id="catBreed"><option value="">Selecciona…</option><option>Siamés</option><option>Persa</option><option>Maine Coon</option><option>Ragdoll</option><option>Bengalí</option><option>Británico de pelo corto</option><option>Mestizo / otra raza</option></select></div></div><div class="field" id="weightField" style="display:none"><label>Peso aproximado <span class="required-note">* obligatorio</span></label><select id="weightRange"><option value="">Selecciona…</option><option value="chico" data-weight-option>Chico (0–10 kg)</option><option value="mediano" data-weight-option>Mediano (11–25 kg)</option><option value="grande" data-weight-option>Grande (25–45 kg)</option><option value="xl" data-weight-option>Extra grande (más de 45 kg)</option></select></div><div class="worker-only weight-range-editor"><button type="button" class="weight-range-toggle" id="toggleWeightRanges" aria-expanded="false">⚙ Ajustar rangos de peso (kg)</button><div class="weight-range-settings" id="weightRangeSettings" hidden><p>Los cambios se aplican al peso aproximado que ven el cliente y el trabajador en este dispositivo.</p><div class="weight-range-row"><b>Chico</b><label>Desde <input type="number" id="weightChicoMin" min="0" step="1"></label><label>Hasta <input type="number" id="weightChicoMax" min="0" step="1"></label></div><div class="weight-range-row"><b>Mediano</b><label>Desde <input type="number" id="weightMedianoMin" min="0" step="1"></label><label>Hasta <input type="number" id="weightMedianoMax" min="0" step="1"></label></div><div class="weight-range-row"><b>Grande</b><label>Desde <input type="number" id="weightGrandeMin" min="0" step="1"></label><label>Hasta <input type="number" id="weightGrandeMax" min="0" step="1"></label></div><div class="weight-range-row"><b>Extra grande</b><label>Desde <input type="number" id="weightXlMin" min="1" step="1"></label><small>Se mostrará “Más de X kg”.</small></div><button type="button" class="btn btn-primary" id="saveWeightRanges">Guardar rangos</button></div></div><button type="button" id="confirmWeightBtn" class="btn btn-outline-dark" style="display:none;margin-top:8px">Confirmar peso y mostrar urnas</button><div id="manualWeightAction" style="display:none"><small>Sugerimos un peso según su raza; puedes ajustarlo si lo prefieres.</small> <button type="button" id="manualWeightBtn" class="btn btn-outline-dark" style="padding:7px 13px;font-size:11px">Cambiar peso</button></div>
 <div id="urnPickerWrap" style="display:none"><h4 class="step-title" style="font-size:19px;margin-top:26px">Elige la urna que lo acompañará <span class="required-note">* obligatoria</span></h4><p class="nx-hint" id="urnHint">Desliza para conocerlas todas. Primero selecciona su peso para ver los precios.</p>
 <div class="nx-carousel" id="urnCarousel"><button type="button" class="nx-arrow prev" aria-label="Urnas anteriores">‹</button><div class="nx-track" id="urnGrid" tabindex="0" aria-label="Catálogo de urnas"></div><button type="button" class="nx-arrow next" aria-label="Urnas siguientes">›</button><div class="nx-dots" id="urnDots"></div></div></div>
 <div id="comNote" class="nx-hint" style="display:none"></div>
