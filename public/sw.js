@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nextli-configurator-v3';
+const CACHE_NAME = 'nextli-configurator-v4';
 const CORE = [
   '/',
   '/?modo=trabajador',
