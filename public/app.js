@@ -219,7 +219,7 @@ function buildExtraCards() {
     c.onkeydown = e => { if (!e.target.closest('[data-qty-change],[data-vinyl-extra-color]')) cardKey(e, tog); };
     track.appendChild(c);
   });
-  track.scrollLeft = left; extrasDirty = false;
+  track.scrollLeft = left; extrasDirty = false; updatePersonalizationPreviews();
 }
 function extraQty(id) { return Math.max(0, Math.floor(Number(state.extraQuantities?.[id] ?? state[id + 'Qty']) || 0)); }
 function setExtraQty(id, qty) {
