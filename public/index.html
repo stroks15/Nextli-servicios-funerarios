@@ -111,6 +111,19 @@ body.app-ready .welcome-screen{display:none}
 
 <div class="worker-bar" id="workerBar"><div class="wb-status"><span>Modo trabajador</span><small id="adminStatus">Inventario bloqueado</small></div><div class="wb-actions"><button type="button" id="installAppBtn" class="gold">Instalar app</button><button type="button" id="adminLoginBtn">Iniciar sesión</button><button type="button" id="adminInventoryBtn" class="gold" hidden>Inventario</button><button type="button" id="adminLogoutBtn" hidden>Cerrar sesión</button></div></div>
 
+<div class="certificate-preview-overlay" id="remisionPreview" aria-hidden="true">
+  <div class="certificate-preview-dialog remision-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="remisionPreviewTitle">
+    <div class="certificate-preview-head"><h3 id="remisionPreviewTitle">Vista previa de la nota de remisión</h3><button type="button" id="closeRemisionPreview" aria-label="Cerrar">×</button></div>
+    <div class="certificate-preview-body"><div id="remisionPreviewMount"></div></div>
+    <div class="certificate-preview-actions remision-preview-actions">
+      <button type="button" class="btn btn-outline" id="cancelRemisionPreview">Cerrar</button>
+      <button type="button" class="btn btn-outline-dark" id="downloadRemisionPdfPreview">Descargar PDF</button>
+      <button type="button" class="btn btn-primary" id="sendRemisionToClient">Enviar PDF al cliente</button>
+    </div>
+    <p class="remision-share-note">El botón de envío comparte el PDF desde el teléfono. Selecciona WhatsApp y confirma el chat del cliente.</p>
+  </div>
+</div>
+
 <div class="certificate-preview-overlay" id="certificatePreview" aria-hidden="true">
   <div class="certificate-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="certificatePreviewTitle">
     <div class="certificate-preview-head"><h3 id="certificatePreviewTitle">Vista previa del certificado</h3><button type="button" id="closeCertificatePreview" aria-label="Cerrar">×</button></div>
