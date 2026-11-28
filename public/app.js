@@ -268,8 +268,19 @@ function extrasList() {
 }
 function colorHex(color) { return ({ Plateado: '#aeb4bd', Blanco: '#f7f5ef', Negro: '#171719', Dorado: '#c69a45' })[color] || '#aeb4bd'; }
 function updatePersonalizationPreviews() {
-  const frameTint = $('plusFrameTint');
-  if (frameTint) { frameTint.style.backgroundColor = colorHex(state.frame); frameTint.style.mixBlendMode = state.frame === 'Blanco' ? 'screen' : 'multiply'; }
+  const frameShell = $('plusFramePreviewShell');
+  const framePalette = {
+    Plateado: ['#f4f6f8','#b9c0c9','#68717c'],
+    Blanco: ['#ffffff','#f1eee7','#c8c3b9'],
+    Negro: ['#777b82','#292c32','#090a0d'],
+    Dorado: ['#ffe4a0','#c99a43','#80521b']
+  };
+  if (frameShell) {
+    const tones = framePalette[state.frame] || framePalette.Plateado;
+    frameShell.style.setProperty('--frame-light', tones[0]);
+    frameShell.style.setProperty('--frame-mid', tones[1]);
+    frameShell.style.setProperty('--frame-dark', tones[2]);
+  }
   const plusTint = $('plusUrnTint');
   if (plusTint) plusTint.style.backgroundColor = colorHex(state.color);
   document.querySelectorAll('[data-vinyl-tint]').forEach(layer => {
