@@ -14,7 +14,7 @@ const catSize = { Siamés: 'chico', Persa: 'chico', 'Maine Coon': 'mediano', Rag
 
 let workerMode = false, logoTaps = 0, workerUnlockArmed = false, workerUnlockTimer = null;
 const WORKER_UNLOCK_WINDOW = 3000;
-let state = { extraQuantities: {}, service: null, species: '', otherSpecies: '', breed: '', weight: '', weightConfirmed: false, urnId: null, plus: false, huella: false, cert: false, plusQty: 0, huellaQty: 0, certQty: 0, petColor: '', petColorOther: '', color: '', frame: '', paymentStatus: 'No pagado', paymentOther: '' };
+let state = { extraQuantities: {}, service: null, species: '', otherSpecies: '', breed: '', weight: '', weightConfirmed: false, urnId: null, plus: false, huella: false, cert: false, plusQty: 0, huellaQty: 0, certQty: 0, petColor: '', petColorOther: '', color: 'Plateado', frame: 'Plateado', plusMessage: '', vinylExtraColor: 'Plateado', paymentStatus: 'No pagado', paymentOther: '' };
 
 const $ = id => document.getElementById(id);
 const val = id => (($(id)?.value || '').trim() || '—');
@@ -109,6 +109,12 @@ function buildUrnCards() {
     c.className = 'pcard'; c.dataset.id = u.id; c.setAttribute('role', 'button'); c.tabIndex = 0;
     c.innerHTML = `<div class="pcard-media"><span class="pcard-badge" hidden></span><img src="${esc(u.img)}" alt="${esc(u.name)}" loading="lazy" decoding="async"></div>
       <div class="pcard-body"><h5>${esc(u.name)}</h5><p class="pcard-desc">${esc(u.desc)}</p><div class="pcard-price"></div></div>`;
+    if (x.id === 'vinilo-personalizado') {
+      const config = document.createElement('div'); config.className = 'personalization-config'; config.dataset.vinylExtraConfig = ''; config.hidden = true;
+      config.innerHTML = '<h6>Personaliza el color del vinilo</h6><img class="personalization-preview" data-vinyl-extra-preview src="/images/plus-urna-plateado.webp" alt="Ejemplo de urna con vinilo premium" loading="lazy"><div class="vinyl-colors" role="group" aria-label="Color del vinilo del complemento">' + ['Plateado','Blanco','Negro','Dorado'].map(color => '<button type="button" class="color-swatch ' + (color === 'Plateado' ? 'selected' : '') + '" data-vinyl-extra-color="' + color + '" aria-pressed="' + (color === 'Plateado') + '">' + color + '</button>').join('') + '</div>';
+      c.querySelector('.pcard-body').appendChild(config);
+      config.querySelectorAll('[data-vinyl-extra-color]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); state.vinylExtraColor = b.dataset.vinylExtraColor; updatePersonalizationPreviews(); refreshExtraCards(); }));
+    }
     localizeImg(c.querySelector('img'));
     const pick = () => selectUrn(u.id);
     c.onclick = pick; c.onkeydown = e => cardKey(e, pick);
@@ -200,7 +206,7 @@ function buildExtraCards() {
       <div class="pcard-price">+${money(x.price)} <small>MXN / unidad</small></div><button type="button" class="pcard-cta" tabindex="-1"></button><div class="extra-qty"><button type="button" data-qty-change="-1" aria-label="Quitar una unidad">−</button><output data-qty-value>0</output><button type="button" data-qty-change="1" aria-label="Agregar una unidad">+</button></div></div>`;
     localizeImg(c.querySelector('img'));
     const tog = () => toggleExtra(x.id);
-    c.onclick = e => { if (e.target.closest('[data-qty-change]')) return; tog(); };
+    c.onclick = e => { if (e.target.closest('[data-qty-change],[data-vinyl-extra-color]')) return; tog(); };
     c.querySelectorAll('[data-qty-change]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); changeExtraQty(x.id, Number(b.dataset.qtyChange)); }));
     c.onkeydown = e => { if (!e.target.closest('[data-qty-change]')) cardKey(e, tog); };
     track.appendChild(c);
@@ -210,13 +216,12 @@ function buildExtraCards() {
 function extraQty(id) { return Math.max(0, Math.floor(Number(state.extraQuantities?.[id] ?? state[id + 'Qty']) || 0)); }
 function setExtraQty(id, qty) {
   const x = getExtra(id); if (!x || x.soldOut) { if (x && x.soldOut) INV.toast('Este detalle está agotado por ahora.'); return; }
-  const max = Number.isFinite(x.stock) ? Math.max(0, x.stock) : 99;
+  const max = x.id === 'vinilo-personalizado' ? 1 : (Number.isFinite(x.stock) ? Math.max(0, x.stock) : 99);
   const next = Math.max(0, Math.min(max, 99, Math.floor(Number(qty) || 0)));
   state.extraQuantities = state.extraQuantities || {}; state.extraQuantities[id] = next;
   if (['plus','huella','cert'].includes(id)) state[id + 'Qty'] = next;
   state[id] = next > 0;
-  if (id === 'plus' && !state.plus) { state.frame = ''; state.color = ''; document.querySelectorAll('[data-frame],[data-color]').forEach(y => y.classList.remove('selected')); }
-  refreshExtraCards(); updateTotal();
+  refreshExtraCards(); updatePersonalizationPreviews(); updateTotal();
 }
 function changeExtraQty(id, delta) { setExtraQty(id, extraQty(id) + delta); }
 function refreshExtraCards() {
@@ -228,6 +233,8 @@ function refreshExtraCards() {
     const out = c.querySelector('[data-qty-value]'); if (out) out.textContent = String(qty);
     c.querySelectorAll('[data-qty-change]').forEach(b => b.disabled = x.soldOut || (b.dataset.qtyChange === '-1' && qty === 0) || (b.dataset.qtyChange === '1' && Number.isFinite(x.stock) && qty >= x.stock));
     c.setAttribute('aria-pressed', qty > 0 ? 'true' : 'false');
+    const config = c.querySelector('[data-vinyl-extra-config]'); if (config) config.hidden = !(qty > 0);
+    c.querySelectorAll('[data-vinyl-extra-color]').forEach(b => { const selected = b.dataset.vinylExtraColor === state.vinylExtraColor; b.classList.toggle('selected', selected); b.setAttribute('aria-pressed', String(selected)); });
   });
   $('frameWrap').style.display = state.plus ? 'block' : 'none'; $('colorWrap').style.display = state.plus ? 'block' : 'none';
 }
@@ -249,7 +256,14 @@ function total() { return calcBase() + (isCom() ? 0 : INV.extras().reduce((sum, 
 function updateTotal() { $('runningTotal3').textContent = 'Total: ' + money(total()) + ' MXN'; updatePayNote(); }
 function extrasList() {
   if (isCom()) return [];
-  return [...INV.extras().filter(x => extraQty(x.id) > 0).map(x => `${extraQty(x.id)}x ${x.name} (+${money(extraQty(x.id) * x.price)} MXN)`), state.plus && state.frame ? `Marco: ${state.frame}` : null, state.plus && state.color ? `Vinilo: ${state.color}` : null].filter(Boolean);
+  return [...INV.extras().filter(x => extraQty(x.id) > 0).map(x => `${extraQty(x.id)}x ${x.name} (+${money(extraQty(x.id) * x.price)} MXN)`), state.plus ? `Color del marco incluido: ${state.frame}` : null, state.plus ? `Vinilo premium de la urna incluida: ${state.color}` : null, state.plus && state.plusMessage.trim() ? `Mensaje personalizado: ${state.plusMessage.trim()}` : null, extraQty('vinilo-personalizado') > 0 ? `Color del vinilo del complemento: ${state.vinylExtraColor}` : null].filter(Boolean);
+}
+function colorSlug(color) { return ({ Plateado: 'plateado', Blanco: 'blanco', Negro: 'negro', Dorado: 'dorado' })[color] || 'plateado'; }
+function updatePersonalizationPreviews() {
+  const frame = $('plusFramePreview'), urn = $('plusUrnPreview');
+  if (frame) frame.src = `/images/plus-frame-${colorSlug(state.frame)}.webp`;
+  if (urn) urn.src = `/images/plus-urna-${colorSlug(state.color)}.webp`;
+  document.querySelectorAll('[data-vinyl-extra-preview]').forEach(img => { img.src = `/images/plus-urna-${colorSlug(state.vinylExtraColor)}.webp`; });
 }
 function updatePriceLabels() {
   const all = getUrns().filter(u => !u.soldOut).flatMap(u => Object.values(u.prices));
@@ -397,7 +411,7 @@ $('workerButton').addEventListener('dblclick', e => e.preventDefault());
 document.querySelectorAll('[data-service]').forEach(b => b.onclick = () => {
   document.querySelectorAll('[data-service]').forEach(x => x.classList.remove('selected'));
   b.classList.add('selected'); state.service = b.dataset.service;
-  if (isCom()) { state.plus = state.huella = state.cert = false; state.plusQty = state.huellaQty = state.certQty = 0; state.extraQuantities = {}; state.frame = state.color = ''; refreshExtraCards(); }
+  if (isCom()) { state.plus = state.huella = state.cert = false; state.plusQty = state.huellaQty = state.certQty = 0; state.extraQuantities = {}; refreshExtraCards(); }
   applyServiceUI(); renderUrns(); goTo(2);
 });
 document.querySelectorAll('[data-wa-text]').forEach(b => b.onclick = () => window.open('https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(b.dataset.waText), '_blank'));
@@ -416,8 +430,9 @@ $('weightRange').onchange = e => {
 $('manualWeightBtn').onclick = () => { $('weightRange').focus(); };
 $('confirmWeightBtn').onclick = () => { if (!state.weight) return; state.weightConfirmed = true; updatePetFlow(); applyServiceUI(); };
 $('next2').onclick = () => goTo(isCom() ? 4 : 3);
-document.querySelectorAll('[data-frame]').forEach(x => x.onclick = () => { document.querySelectorAll('[data-frame]').forEach(y => y.classList.remove('selected')); x.classList.add('selected'); state.frame = x.dataset.frame; });
-document.querySelectorAll('[data-color]').forEach(x => x.onclick = () => { document.querySelectorAll('[data-color]').forEach(y => y.classList.remove('selected')); x.classList.add('selected'); state.color = x.dataset.color; });
+document.querySelectorAll('[data-frame-color]').forEach(x => x.onclick = () => { document.querySelectorAll('[data-frame-color]').forEach(y => { y.classList.remove('selected'); y.setAttribute('aria-pressed','false'); }); x.classList.add('selected'); x.setAttribute('aria-pressed','true'); state.frame = x.dataset.frameColor; updatePersonalizationPreviews(); });
+document.querySelectorAll('[data-color]').forEach(x => x.onclick = () => { document.querySelectorAll('[data-color]').forEach(y => { y.classList.remove('selected'); y.setAttribute('aria-pressed','false'); }); x.classList.add('selected'); x.setAttribute('aria-pressed','true'); state.color = x.dataset.color; updatePersonalizationPreviews(); });
+$('plusMessage').oninput = e => { state.plusMessage = String(e.target.value || '').slice(0,60); if (e.target.value !== state.plusMessage) e.target.value = state.plusMessage; $('plusMessageCount').textContent = `${state.plusMessage.length}/60 caracteres`; };
 $('next3').onclick = () => goTo(4);
 document.querySelectorAll('[data-back]').forEach(b => b.onclick = () => {
   const to = +b.dataset.back;
