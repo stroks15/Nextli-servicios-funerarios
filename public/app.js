@@ -389,10 +389,29 @@ ${isCom() ? '' : `*Urna:* ${urn?.name || '—'}\n`}*Tamaño / peso:* ${SIZE_LABE
 function line(a, b) { return `<div class="summary-line"><span>${a}</span><b>${esc(b)}</b></div>`; }
 function renderSummary() {
   const urn = getUrn(state.urnId), plus = getExtra('plus'), vinyl = getExtra('vinilo-personalizado');
-  const plusLines = state.plus ? line('Paquete Plus', `${plus?.name || 'Paquete Plus'} (+${money((plus?.price || 0) * extraQty('plus'))} MXN)`) + line('Cuadro con fotografía y marco', 'Incluido') + line('Color del marco incluido', state.frame) + line('Vinilo premium de la urna', state.color) + (state.plusMessage.trim() ? line('Mensaje personalizado', state.plusMessage.trim()) : '') : '';
-  const vinylLines = extraQty('vinilo-personalizado') > 0 ? line('Complemento extra', `${vinyl?.name || 'Personalización de vinil'} (+${money((vinyl?.price || 100) * extraQty('vinilo-personalizado'))} MXN)`) + line('Color del vinilo del complemento', state.vinylExtraColor) : '';
+  const colorSelect = (field, label, selected) => `<div class="summary-line summary-edit-line"><span>${label}</span><select data-summary-field="${field}" aria-label="${label}">${['Plateado','Blanco','Negro','Dorado'].map(c => `<option value="${c}" ${c===selected?'selected':''}>${c}</option>`).join('')}</select></div>`;
+  const plusLines = state.plus ? line('Paquete Plus', `${plus?.name || 'Paquete Plus'} (+${money((plus?.price || 0) * extraQty('plus'))} MXN)`) + line('Cuadro con fotografía y marco', 'Incluido') + colorSelect('frame','Color del marco',state.frame) + colorSelect('color','Vinilo premium de la urna',state.color) + `<div class="summary-edit-message"><label for="summaryPlusMessage">Mensaje personalizado (máximo 60 caracteres)</label><textarea id="summaryPlusMessage" data-summary-field="plusMessage" maxlength="60" rows="2">${esc(state.plusMessage)}</textarea><small><span id="summaryPlusCount">${Array.from(state.plusMessage).length}</span>/60 caracteres</small></div>` : '';
+  const vinylLines = extraQty('vinilo-personalizado') > 0 ? line('Complemento extra', `${vinyl?.name || 'Personalización de vinil'} (+${money((vinyl?.price || 100) * extraQty('vinilo-personalizado'))} MXN)`) + colorSelect('vinylExtraColor','Color del vinilo del complemento',state.vinylExtraColor) : '';
   const otherExtras = INV.extras().filter(x => !['plus','vinilo-personalizado'].includes(x.id) && extraQty(x.id) > 0).map(x => line('Complemento', `${extraQty(x.id)}x ${x.name} (+${money(extraQty(x.id) * x.price)} MXN)`)).join('');
-  $('summaryBox').innerHTML = `<div class="summary-box"><h4>Resumen de tu solicitud</h4>${line('Servicio', isCom() ? 'Cremación Comunitaria' : 'Cremación Individual')}${line('Mascota', val('petName'))}${line('Especie / raza', speciesLabel() + (state.breed ? ' / ' + state.breed : ''))}${line('Color', petColorLabel())}${line('Tamaño / peso', SIZE_LABEL[state.weight] || '—')}${isCom() ? '' : line('Urna', urn?.name || '—')}${plusLines}${vinylLines}${otherExtras}${line('Propietario', val('ownerName'))}${line('Teléfono', val('ownerPhone'))}${line('Dirección', val('ownerAddress'))}${workerMode ? line('Pago', paymentLabel()) + line('Saldo pendiente', money(paymentInfo().balance) + ' MXN') : ''}<div class="summary-total"><span>Total estimado</span><span>${money(total())} MXN</span></div></div>`;
+  $('summaryBox').innerHTML = `<div class="summary-box"><h4>Resumen de tu solicitud</h4>${line('Servicio', isCom() ? 'Cremación Comunitaria' : 'Cremación Individual')}${line('Mascota', val('petName'))}${line('Especie / raza', speciesLabel() + (state.breed ? ' / ' + state.breed : ''))}${line('Color', petColorLabel())}${line('Tamaño / peso', SIZE_LABEL[state.weight] || '—')}${isCom() ? '' : line('Urna', urn?.name || '—')}${plusLines}${vinylLines}${otherExtras}${line('Propietario', val('ownerName'))}<div class="summary-line summary-edit-line"><span>Teléfono del cliente</span><input data-summary-field="ownerPhone" type="tel" inputmode="tel" value="${esc(val('ownerPhone'))}" aria-label="Teléfono del cliente"></div>${line('Dirección', val('ownerAddress'))}${workerMode ? line('Pago', paymentLabel()) + line('Saldo pendiente', money(paymentInfo().balance) + ' MXN') : ''}<div class="summary-total"><span>Total estimado</span><span>${money(total())} MXN</span></div></div>`;
+  $('summaryBox').querySelectorAll('[data-summary-field]').forEach(control => {
+    const update = () => {
+      const field = control.dataset.summaryField, value = control.value;
+      if (field === 'plusMessage') {
+        const chars = Array.from(value).slice(0,60); state.plusMessage = chars.join('');
+        if (control.value !== state.plusMessage) control.value = state.plusMessage;
+        const count = $('summaryPlusCount'); if (count) count.textContent = String(chars.length);
+      } else if (field === 'ownerPhone') {
+        $('ownerPhone').value = value.replace(/[^0-9+()\s-]/g,'').slice(0,20);
+        control.value = $('ownerPhone').value;
+      } else {
+        state[field] = value;
+        updatePersonalizationPreviews();
+      }
+      $('sendWa').href = 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(buildMessage('cliente'));
+    };
+    control.addEventListener(control.tagName === 'SELECT' ? 'change' : 'input', update);
+  });
   $('sendWa').href = 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(buildMessage('cliente'));
 }
 function requiredOk() {
