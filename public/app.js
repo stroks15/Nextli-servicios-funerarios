@@ -14,7 +14,7 @@ const catSize = { Siamés: 'chico', Persa: 'chico', 'Maine Coon': 'mediano', Rag
 
 let workerMode = false, logoTaps = 0, workerUnlockArmed = false, workerUnlockTimer = null;
 const WORKER_UNLOCK_WINDOW = 3000;
-let state = { extraQuantities: {}, service: null, species: '', otherSpecies: '', breed: '', weight: '', weightConfirmed: false, urnId: null, plus: false, huella: false, cert: false, plusQty: 0, huellaQty: 0, certQty: 0, petColor: '', petColorOther: '', color: '', frame: '', paymentStatus: 'No pagado', paymentOther: '' };
+let state = { extraQuantities: {}, service: null, species: '', otherSpecies: '', breed: '', weight: '', weightConfirmed: false, urnId: null, plus: false, huella: false, cert: false, plusQty: 0, huellaQty: 0, certQty: 0, petColor: '', petColorOther: '', color: 'Plateado', frame: 'Plateado', plusMessage: '', vinylExtraColor: 'Plateado', paymentStatus: 'No pagado', paymentOther: '' };
 
 const $ = id => document.getElementById(id);
 const val = id => (($(id)?.value || '').trim() || '—');
@@ -199,24 +199,37 @@ function buildExtraCards() {
       <div class="pcard-body"><p class="pcard-eyebrow">${esc(x.eyebrow)}</p><h5>${esc(x.name)}</h5><p class="pcard-desc">${esc(x.desc)}</p>
       <div class="pcard-price">+${money(x.price)} <small>MXN / unidad</small></div><button type="button" class="pcard-cta" tabindex="-1"></button><div class="extra-qty"><button type="button" data-qty-change="-1" aria-label="Quitar una unidad">−</button><output data-qty-value>0</output><button type="button" data-qty-change="1" aria-label="Agregar una unidad">+</button></div></div>`;
     localizeImg(c.querySelector('img'));
+    if (x.id === 'vinilo-personalizado') {
+      const config = document.createElement('div');
+      config.className = 'personalization-config';
+      config.dataset.vinylExtraConfig = '';
+      config.hidden = true;
+      config.innerHTML = '<h6>Personaliza el color del vinilo</h6><div class="urn-preview-shell"><img src="/images/urn-sample.webp" alt="Urna de muestra con diseño de vinilo premium" loading="lazy"><div class="vinyl-tint" data-vinyl-tint aria-hidden="true"></div></div><div class="vinyl-colors" role="group" aria-label="Color del vinilo del complemento">' + ['Plateado','Blanco','Negro','Dorado'].map(color => '<button type="button" class="color-swatch ' + (color === state.vinylExtraColor ? 'selected' : '') + '" data-vinyl-extra-color="' + color + '" aria-pressed="' + (color === state.vinylExtraColor) + '">' + color + '</button>').join('') + '</div>';
+      c.querySelector('.pcard-body').appendChild(config);
+      config.querySelectorAll('[data-vinyl-extra-color]').forEach(b => b.addEventListener('click', e => {
+        e.stopPropagation();
+        state.vinylExtraColor = b.dataset.vinylExtraColor;
+        updatePersonalizationPreviews();
+        refreshExtraCards();
+      }));
+    }
     const tog = () => toggleExtra(x.id);
-    c.onclick = e => { if (e.target.closest('[data-qty-change]')) return; tog(); };
+    c.onclick = e => { if (e.target.closest('[data-qty-change],[data-vinyl-extra-color]')) return; tog(); };
     c.querySelectorAll('[data-qty-change]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); changeExtraQty(x.id, Number(b.dataset.qtyChange)); }));
-    c.onkeydown = e => { if (!e.target.closest('[data-qty-change]')) cardKey(e, tog); };
+    c.onkeydown = e => { if (!e.target.closest('[data-qty-change],[data-vinyl-extra-color]')) cardKey(e, tog); };
     track.appendChild(c);
   });
-  track.scrollLeft = left; extrasDirty = false;
+  track.scrollLeft = left; extrasDirty = false; updatePersonalizationPreviews();
 }
 function extraQty(id) { return Math.max(0, Math.floor(Number(state.extraQuantities?.[id] ?? state[id + 'Qty']) || 0)); }
 function setExtraQty(id, qty) {
   const x = getExtra(id); if (!x || x.soldOut) { if (x && x.soldOut) INV.toast('Este detalle está agotado por ahora.'); return; }
-  const max = Number.isFinite(x.stock) ? Math.max(0, x.stock) : 99;
+  const max = x.id === 'vinilo-personalizado' ? 1 : (Number.isFinite(x.stock) ? Math.max(0, x.stock) : 99);
   const next = Math.max(0, Math.min(max, 99, Math.floor(Number(qty) || 0)));
   state.extraQuantities = state.extraQuantities || {}; state.extraQuantities[id] = next;
   if (['plus','huella','cert'].includes(id)) state[id + 'Qty'] = next;
   state[id] = next > 0;
-  if (id === 'plus' && !state.plus) { state.frame = ''; state.color = ''; document.querySelectorAll('[data-frame],[data-color]').forEach(y => y.classList.remove('selected')); }
-  refreshExtraCards(); updateTotal();
+  refreshExtraCards(); updatePersonalizationPreviews(); updateTotal();
 }
 function changeExtraQty(id, delta) { setExtraQty(id, extraQty(id) + delta); }
 function refreshExtraCards() {
@@ -228,6 +241,8 @@ function refreshExtraCards() {
     const out = c.querySelector('[data-qty-value]'); if (out) out.textContent = String(qty);
     c.querySelectorAll('[data-qty-change]').forEach(b => b.disabled = x.soldOut || (b.dataset.qtyChange === '-1' && qty === 0) || (b.dataset.qtyChange === '1' && Number.isFinite(x.stock) && qty >= x.stock));
     c.setAttribute('aria-pressed', qty > 0 ? 'true' : 'false');
+    const config = c.querySelector('[data-vinyl-extra-config]'); if (config) config.hidden = !(qty > 0);
+    c.querySelectorAll('[data-vinyl-extra-color]').forEach(b => { const selected = b.dataset.vinylExtraColor === state.vinylExtraColor; b.classList.toggle('selected', selected); b.setAttribute('aria-pressed', String(selected)); });
   });
   $('frameWrap').style.display = state.plus ? 'block' : 'none'; $('colorWrap').style.display = state.plus ? 'block' : 'none';
 }
@@ -249,7 +264,31 @@ function total() { return calcBase() + (isCom() ? 0 : INV.extras().reduce((sum, 
 function updateTotal() { $('runningTotal3').textContent = 'Total: ' + money(total()) + ' MXN'; updatePayNote(); }
 function extrasList() {
   if (isCom()) return [];
-  return [...INV.extras().filter(x => extraQty(x.id) > 0).map(x => `${extraQty(x.id)}x ${x.name} (+${money(extraQty(x.id) * x.price)} MXN)`), state.plus && state.frame ? `Marco: ${state.frame}` : null, state.plus && state.color ? `Vinilo: ${state.color}` : null].filter(Boolean);
+  return [...INV.extras().filter(x => extraQty(x.id) > 0).map(x => `${extraQty(x.id)}x ${x.name} (+${money(extraQty(x.id) * x.price)} MXN)`), state.plus ? `Color del marco incluido: ${state.frame}` : null, state.plus ? `Vinilo premium de la urna incluida: ${state.color}` : null, state.plus && state.plusMessage.trim() ? `Mensaje personalizado: ${state.plusMessage.trim()}` : null, extraQty('vinilo-personalizado') > 0 ? `Color del vinilo del complemento: ${state.vinylExtraColor}` : null].filter(Boolean);
+}
+function colorHex(color) { return ({ Plateado: '#aeb4bd', Blanco: '#f7f5ef', Negro: '#171719', Dorado: '#c69a45' })[color] || '#aeb4bd'; }
+function updatePersonalizationPreviews() {
+  const frameShell = $('plusFramePreviewShell');
+  const framePalette = {
+    Plateado: ['#f4f6f8','#b9c0c9','#68717c'],
+    Blanco: ['#ffffff','#f1eee7','#c8c3b9'],
+    Negro: ['#777b82','#292c32','#090a0d'],
+    Dorado: ['#ffe4a0','#c99a43','#80521b']
+  };
+  if (frameShell) {
+    const tones = framePalette[state.frame] || framePalette.Plateado;
+    frameShell.style.setProperty('--frame-light', tones[0]);
+    frameShell.style.setProperty('--frame-mid', tones[1]);
+    frameShell.style.setProperty('--frame-dark', tones[2]);
+  }
+  const plusTint = $('plusUrnTint');
+  if (plusTint) plusTint.style.backgroundColor = colorHex(state.color);
+  document.querySelectorAll('[data-vinyl-tint]').forEach(layer => {
+    layer.style.backgroundColor = colorHex(state.vinylExtraColor);
+  });
+  document.querySelectorAll('[data-frame-color]').forEach(b => { const on=b.dataset.frameColor===state.frame;b.classList.toggle('selected',on);b.setAttribute('aria-pressed',String(on)); });
+  document.querySelectorAll('[data-color]').forEach(b => { const on=b.dataset.color===state.color;b.classList.toggle('selected',on);b.setAttribute('aria-pressed',String(on)); });
+  document.querySelectorAll('[data-vinyl-extra-color]').forEach(b => { const on=b.dataset.vinylExtraColor===state.vinylExtraColor;b.classList.toggle('selected',on);b.setAttribute('aria-pressed',String(on)); });
 }
 function updatePriceLabels() {
   const all = getUrns().filter(u => !u.soldOut).flatMap(u => Object.values(u.prices));
@@ -363,8 +402,35 @@ ${isCom() ? '' : `*Urna:* ${urn?.name || '—'}\n`}*Tamaño / peso:* ${SIZE_LABE
 /* ---------- Resumen ---------- */
 function line(a, b) { return `<div class="summary-line"><span>${a}</span><b>${esc(b)}</b></div>`; }
 function renderSummary() {
-  const urn = getUrn(state.urnId);
-  $('summaryBox').innerHTML = `<div class="summary-box"><h4>Resumen de tu solicitud</h4>${line('Servicio', isCom() ? 'Cremación Comunitaria' : 'Cremación Individual')}${line('Mascota', val('petName'))}${line('Especie / raza', speciesLabel() + (state.breed ? ' / ' + state.breed : ''))}${line('Color', petColorLabel())}${line('Tamaño / peso', SIZE_LABEL[state.weight] || '—')}${isCom() ? '' : line('Urna', urn?.name || '—')}${extrasList().map(x => line('Adicional', x)).join('')}${line('Propietario', val('ownerName'))}${line('Teléfono', val('ownerPhone'))}${line('Dirección', val('ownerAddress'))}${workerMode ? line('Pago', paymentLabel()) + line('Saldo pendiente', money(paymentInfo().balance) + ' MXN') : ''}<div class="summary-total"><span>Total estimado</span><span>${money(total())} MXN</span></div></div>`;
+  const urn = getUrn(state.urnId), plus = getExtra('plus'), vinyl = getExtra('vinilo-personalizado');
+  const colorSelect = (field, label, selected) => `<div class="summary-line summary-edit-line"><span>${label}</span><select data-summary-field="${field}" aria-label="${label}">${['Plateado','Blanco','Negro','Dorado'].map(c => `<option value="${c}" ${c===selected?'selected':''}>${c}</option>`).join('')}</select></div>`;
+  const editLine = (field, label, type='text') => `<div class="summary-line summary-edit-line"><span>${label}</span><input data-summary-field="${field}" type="${type}" value="${esc($(field)?.value||'')}" aria-label="${label}" ${type==='tel'?'inputmode="tel"':''}></div>`;
+  const plusLines = state.plus ? line('Paquete Plus', `${plus?.name || 'Paquete Plus'} (+${money((plus?.price || 0) * extraQty('plus'))} MXN)`) + line('Cuadro con fotografía y marco', 'Incluido') + colorSelect('frame','Color del marco',state.frame) + colorSelect('color','Vinilo premium de la urna',state.color) + `<div class="summary-edit-message"><label for="summaryPlusMessage">Mensaje personalizado (máximo 60 caracteres)</label><textarea id="summaryPlusMessage" data-summary-field="plusMessage" maxlength="60" rows="2">${esc(state.plusMessage)}</textarea><small><span id="summaryPlusCount">${Array.from(state.plusMessage).length}</span>/60 caracteres</small></div>` : '';
+  const vinylLines = extraQty('vinilo-personalizado') > 0 ? line('Complemento extra', `${vinyl?.name || 'Personalización de vinil'} (+${money((vinyl?.price || 100) * extraQty('vinilo-personalizado'))} MXN)`) + colorSelect('vinylExtraColor','Color del vinilo del complemento',state.vinylExtraColor) : '';
+  const otherExtras = INV.extras().filter(x => !['plus','vinilo-personalizado'].includes(x.id) && extraQty(x.id) > 0).map(x => line('Complemento', `${extraQty(x.id)}x ${x.name} (+${money(extraQty(x.id) * x.price)} MXN)`)).join('');
+  $('summaryBox').innerHTML = `<div class="summary-box"><h4>Resumen de tu solicitud</h4>${line('Servicio', isCom() ? 'Cremación Comunitaria' : 'Cremación Individual')}${editLine('petName','Mascota')}${line('Especie / raza', speciesLabel() + (state.breed ? ' / ' + state.breed : ''))}${line('Color', petColorLabel())}${line('Tamaño / peso', SIZE_LABEL[state.weight] || '—')}${isCom() ? '' : line('Urna', urn?.name || '—')}${plusLines}${vinylLines}${otherExtras}${editLine('ownerName','Propietario')}${editLine('ownerPhone','Teléfono del cliente','tel')}${editLine('ownerAddress','Dirección')}${workerMode ? line('Pago', paymentLabel()) + line('Saldo pendiente', money(paymentInfo().balance) + ' MXN') : ''}<div class="summary-total"><span>Total estimado</span><span>${money(total())} MXN</span></div></div>`;
+  $('summaryBox').querySelectorAll('[data-summary-field]').forEach(control => {
+    const update = () => {
+      const field = control.dataset.summaryField, value = control.value;
+      if (field === 'plusMessage') {
+        const chars = typeof Intl !== 'undefined' && Intl.Segmenter ? Array.from(new Intl.Segmenter('es',{granularity:'grapheme'}).segment(value),part=>part.segment).slice(0,60) : Array.from(value).slice(0,60);
+        state.plusMessage = chars.join('');
+        if (control.value !== state.plusMessage) control.value = state.plusMessage;
+        const original = $('plusMessage'); if (original) original.value = state.plusMessage;
+        const count = $('summaryPlusCount'); if (count) count.textContent = String(chars.length);
+        const originalCount = $('plusMessageCount'); if (originalCount) originalCount.textContent = chars.length + '/60 caracteres';
+      } else if (['petName','ownerName','ownerPhone','ownerAddress'].includes(field)) {
+        const original = $(field);
+        if (original) original.value = field === 'ownerPhone' ? value.replace(/[^0-9+()\s-]/g,'').slice(0,20) : value.slice(0,field==='ownerAddress'?240:80);
+        control.value = original ? original.value : value;
+      } else {
+        state[field] = value;
+        updatePersonalizationPreviews();
+      }
+      $('sendWa').href = 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(buildMessage('cliente'));
+    };
+    control.addEventListener(control.tagName === 'SELECT' ? 'change' : 'input', update);
+  });
   $('sendWa').href = 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(buildMessage('cliente'));
 }
 function requiredOk() {
@@ -397,7 +463,7 @@ $('workerButton').addEventListener('dblclick', e => e.preventDefault());
 document.querySelectorAll('[data-service]').forEach(b => b.onclick = () => {
   document.querySelectorAll('[data-service]').forEach(x => x.classList.remove('selected'));
   b.classList.add('selected'); state.service = b.dataset.service;
-  if (isCom()) { state.plus = state.huella = state.cert = false; state.plusQty = state.huellaQty = state.certQty = 0; state.extraQuantities = {}; state.frame = state.color = ''; refreshExtraCards(); }
+  if (isCom()) { state.plus = state.huella = state.cert = false; state.plusQty = state.huellaQty = state.certQty = 0; state.extraQuantities = {}; refreshExtraCards(); }
   applyServiceUI(); renderUrns(); goTo(2);
 });
 document.querySelectorAll('[data-wa-text]').forEach(b => b.onclick = () => window.open('https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(b.dataset.waText), '_blank'));
@@ -416,8 +482,17 @@ $('weightRange').onchange = e => {
 $('manualWeightBtn').onclick = () => { $('weightRange').focus(); };
 $('confirmWeightBtn').onclick = () => { if (!state.weight) return; state.weightConfirmed = true; updatePetFlow(); applyServiceUI(); };
 $('next2').onclick = () => goTo(isCom() ? 4 : 3);
-document.querySelectorAll('[data-frame]').forEach(x => x.onclick = () => { document.querySelectorAll('[data-frame]').forEach(y => y.classList.remove('selected')); x.classList.add('selected'); state.frame = x.dataset.frame; });
-document.querySelectorAll('[data-color]').forEach(x => x.onclick = () => { document.querySelectorAll('[data-color]').forEach(y => y.classList.remove('selected')); x.classList.add('selected'); state.color = x.dataset.color; });
+document.querySelectorAll('[data-frame-color]').forEach(x => x.onclick = () => { document.querySelectorAll('[data-frame-color]').forEach(y => { y.classList.remove('selected'); y.setAttribute('aria-pressed','false'); }); x.classList.add('selected'); x.setAttribute('aria-pressed','true'); state.frame = x.dataset.frameColor; updatePersonalizationPreviews(); });
+document.querySelectorAll('[data-color]').forEach(x => x.onclick = () => { document.querySelectorAll('[data-color]').forEach(y => { y.classList.remove('selected'); y.setAttribute('aria-pressed','false'); }); x.classList.add('selected'); x.setAttribute('aria-pressed','true'); state.color = x.dataset.color; updatePersonalizationPreviews(); });
+$('plusMessage').oninput = e => {
+  const raw = String(e.target.value || '');
+  const parts = typeof Intl !== 'undefined' && Intl.Segmenter
+    ? Array.from(new Intl.Segmenter('es', { granularity: 'grapheme' }).segment(raw), part => part.segment)
+    : Array.from(raw);
+  state.plusMessage = parts.slice(0,60).join('');
+  if (e.target.value !== state.plusMessage) e.target.value = state.plusMessage;
+  $('plusMessageCount').textContent = `${parts.length > 60 ? 60 : parts.length}/60 caracteres`;
+};
 $('next3').onclick = () => goTo(4);
 document.querySelectorAll('[data-back]').forEach(b => b.onclick = () => {
   const to = +b.dataset.back;
@@ -461,10 +536,12 @@ $('sendClientWa').onclick = () => {
   if (!requiredOk()) { alert('Completa primero todos los datos obligatorios.'); return; }
   const phone = normalizePhone(val('ownerPhone'));
   if (phone.length < 10) { alert('Revisa el teléfono del cliente: parece incompleto.'); return; }
+  if (!confirm('Vas a enviar el resumen a ' + val('ownerName') + ' al número +' + phone + '. ¿Es el teléfono del cliente?')) return;
   window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(buildMessage('recibo')), '_blank');
   generateCertificate();
 };
 $('downloadCertificate').onclick = generateCertificate;
+$('downloadRemision').onclick = downloadRemisionPdf;
 
 /* ---------- Certificado de cremación (canvas → PDF) ---------- */
 let certCanvas = null;
@@ -509,6 +586,80 @@ async function generateCertificate() {
   } finally { ok.disabled = false; }
 }
 function safe(s) { return String(s).replace(/[\/:*?"<>|]+/g, '-').replace(/\s+/g, '-').replace(/^-|-$/g, '') || 'Cremacion-Nextli'; }
+let remisionCanvas = null;
+function buildRemisionCanvas() {
+  const canvas=document.createElement('canvas'); canvas.width=1600; canvas.height=1237;
+  const ctx=canvas.getContext('2d'), ink='#17263a', muted='#687386', gold='#b8944d', paper='#fbf8f0';
+  ctx.fillStyle=paper;ctx.fillRect(0,0,1600,1237);
+  ctx.fillStyle=ink;ctx.font='bold 54px Georgia';ctx.fillText('NEXTLI',90,105);
+  ctx.font='24px Arial';ctx.fillStyle=muted;ctx.fillText('SERVICIOS FUNERARIOS · ACOMPAÑAMIENTO CON AMOR',92,145);
+  ctx.textAlign='right';ctx.font='bold 42px Georgia';ctx.fillStyle=ink;ctx.fillText('NOTA DE REMISIÓN',1510,105);
+  ctx.font='22px Arial';ctx.fillStyle=muted;ctx.fillText(nowStamp(),1510,145);ctx.textAlign='left';
+  ctx.fillStyle=gold;ctx.fillRect(90,180,1420,4);
+  ctx.font='bold 25px Arial';ctx.fillStyle=ink;ctx.fillText('DATOS DEL SERVICIO',90,238);
+  ctx.font='22px Arial';ctx.fillStyle=muted;
+  ctx.fillText('Mascota: '+val('petName'),90,286);
+  ctx.fillText('Especie / raza: '+speciesLabel()+(state.breed?' / '+state.breed:''),90,326);
+  ctx.fillText('Servicio: '+(isCom()?'Cremación comunitaria':'Cremación individual'),90,366);
+  ctx.fillText('Tamaño / peso: '+(SIZE_LABEL[state.weight]||'—'),90,406);
+  ctx.fillText('Propietario: '+val('ownerName'),850,286);ctx.fillText('Teléfono: '+val('ownerPhone'),850,326);
+  ctx.fillText('Dirección: '+val('ownerAddress'),850,366);ctx.fillText('Fecha de defunción: '+fmtDate(),850,406);
+  ctx.fillStyle=gold;ctx.fillRect(90,445,1420,2);ctx.font='bold 25px Arial';ctx.fillStyle=ink;ctx.fillText('CONCEPTOS Y PERSONALIZACIÓN',90,500);
+  let y=552;
+  const drawRow=(label,amount,sub=false)=>{
+    ctx.font=sub?'19px Arial':'bold 22px Arial';ctx.fillStyle=sub?muted:ink;
+    const max=amount?1120:1390,words=String(label).split(/\s+/);let line='';
+    for(const word of words){const test=line?line+' '+word:word;if(ctx.measureText(test).width>max&&line){ctx.fillText(line,sub?125:90,y);y+=sub?27:30;line=word;}else line=test;}
+    if(line)ctx.fillText(line,sub?125:90,y);
+    if(amount){ctx.textAlign='right';ctx.fillText(amount,1510,y);ctx.textAlign='left';}y+=sub?34:46;
+  };
+  if(isCom())drawRow('Cremación comunitaria',money(calcBase())+' MXN');
+  else{const urn=getUrn(state.urnId);drawRow(urn?.name||'Urna seleccionada',money(calcBase())+' MXN');}
+  if(state.plus){const plus=getExtra('plus');drawRow('Paquete Plus — cuadro con fotografía y marco incluido',money((plus?.price||0)*extraQty('plus'))+' MXN');drawRow('Color del marco: '+state.frame,'',true);drawRow('Color del vinilo premium de la urna: '+state.color,'',true);if(state.plusMessage.trim())drawRow('Mensaje personalizado: '+state.plusMessage.trim(),'',true);}
+  INV.extras().filter(x=>!['plus','vinilo-personalizado'].includes(x.id)&&extraQty(x.id)>0).forEach(x=>drawRow(extraQty(x.id)+' × '+x.name,money(extraQty(x.id)*x.price)+' MXN'));
+  if(extraQty('vinilo-personalizado')>0){const vinyl=getExtra('vinilo-personalizado');drawRow('Complemento: Personalización de vinil',money((vinyl?.price||100)*extraQty('vinilo-personalizado'))+' MXN');drawRow('Color del vinilo del complemento: '+state.vinylExtraColor,'',true);}
+  ctx.fillStyle=gold;ctx.fillRect(90,Math.min(y+12,1080),1420,3);const totalY=Math.min(y+72,1130);
+  ctx.font='bold 32px Arial';ctx.fillStyle=ink;ctx.fillText('TOTAL',90,totalY);ctx.textAlign='right';ctx.fillText(money(total())+' MXN',1510,totalY);ctx.textAlign='left';
+  ctx.font='italic 20px Georgia';ctx.fillStyle=muted;ctx.fillText('Gracias por permitirnos honrar la vida de tu compañero. Estamos contigo.',90,1205);
+  return canvas;
+}
+function closeRemisionPreview(){const o=$('remisionPreview');if(!o)return;o.classList.remove('open');o.setAttribute('aria-hidden','true');$('remisionPreviewMount').innerHTML='';remisionCanvas=null;}
+async function generateRemisionPreview(){
+  if(!workerMode){alert('La nota de remisión la genera el equipo NEXTLI.');return;}
+  if(!requiredOk()){alert('Completa primero todos los datos obligatorios.');return;}
+  const overlay=$('remisionPreview'),mount=$('remisionPreviewMount');mount.innerHTML='<div class="cert-loading" style="padding:30px;text-align:center">Preparando la nota de remisión…</div>';overlay.classList.add('open');overlay.setAttribute('aria-hidden','false');
+  try{remisionCanvas=buildRemisionCanvas();mount.innerHTML='';const wrap=document.createElement('div');wrap.className='remision-canvas-wrap';wrap.appendChild(remisionCanvas);mount.appendChild(wrap);}
+  catch(e){console.error(e);mount.textContent='No se pudo preparar la nota. Inténtalo de nuevo.';}
+}
+async function createRemisionFile(){
+  if(!remisionCanvas)remisionCanvas=buildRemisionCanvas();
+  const blob=await CERT.toPdfBlob(remisionCanvas,'Nota de remision NEXTLI');
+  if(!(blob instanceof Blob)||blob.type!=='application/pdf'||blob.size<1000)throw new Error('El PDF generado no es válido.');
+  return new File([blob],'Nota-Remision-'+safe(val('petName'))+'-'+safe(val('ownerName'))+'.pdf',{type:'application/pdf'});
+}
+async function downloadRemisionPdf(){
+  if(!workerMode)return;const btn=$('downloadRemisionPdfPreview');if(btn)btn.disabled=true;
+  try{const file=await createRemisionFile(),url=URL.createObjectURL(file),a=document.createElement('a');a.href=url;a.download=file.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);}
+  catch(e){console.error(e);alert('No se pudo generar un PDF válido. Vuelve a abrir la vista previa e inténtalo otra vez.');}
+  finally{if(btn)btn.disabled=false;}
+}
+async function sendRemisionToClient(){
+  if(!workerMode)return;const btn=$('sendRemisionToClient');btn.disabled=true;
+  try{
+    const phone=normalizePhone(val('ownerPhone'));if(!/^52\d{10}$|^\d{11,15}$/.test(phone)){alert('Revisa el teléfono del cliente antes de compartir la nota.');return;}
+    if(!confirm('Vas a compartir el PDF de '+val('ownerName')+' para el número +'+phone+'. Al elegir WhatsApp, confirma ese mismo contacto. ¿Continuar?'))return;
+    const file=await createRemisionFile(),textMessage=buildMessage('recibo');
+    if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]}))await navigator.share({files:[file],title:'Nota de remisión NEXTLI',text:textMessage});
+    else{
+      const url='https://wa.me/'+phone+'?text='+encodeURIComponent(textMessage+'\n\nTe comparto la nota de remisión en PDF. Adjuntaré el archivo en este chat.');
+      const blobUrl=URL.createObjectURL(file),a=document.createElement('a');a.href=blobUrl;a.download=file.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(blobUrl),60000);window.location.href=url;
+      alert('Se descargó el PDF y se abrió el chat del cliente. Adjunta el archivo descargado en WhatsApp para enviarlo.');
+    }
+  }catch(e){if(e&&e.name!=='AbortError'){console.error(e);alert('No se pudo compartir la nota PDF. Puedes descargarla y adjuntarla manualmente.');}}
+  finally{btn.disabled=false;}
+}
+$('downloadRemision').onclick=generateRemisionPreview;
+
 async function downloadCertificatePdf() {
   if (!workerMode) { alert('El certificado lo genera el equipo NEXTLI.'); return; }
   if (!certCanvas) return;
@@ -524,6 +675,10 @@ async function downloadCertificatePdf() {
   finally { btn.disabled = false; }
 }
 $('confirmCertificateDownload').onclick = downloadCertificatePdf;
+$('closeRemisionPreview').onclick = closeRemisionPreview;
+$('cancelRemisionPreview').onclick = closeRemisionPreview;
+$('downloadRemisionPdfPreview').onclick = downloadRemisionPdf;
+$('sendRemisionToClient').onclick = sendRemisionToClient;
 $('closeCertificatePreview').onclick = closeCertificatePreview;
 $('cancelCertificatePreview').onclick = closeCertificatePreview;
 

@@ -37,7 +37,8 @@
   ];
 
   const BASE_EXTRAS = [
-    { id: 'plus', eyebrow: 'Homenaje', name: 'Paquete Plus — Homenaje completo', desc: 'Fotografía, huella y urna personalizada en vinilo, para tenerle siempre cerca.', img: '/images/thumb-plus.jpg', price: 500 },
+    { id: 'plus', eyebrow: 'Homenaje especial', name: 'Paquete Plus — Un recuerdo que vivirá siempre contigo', desc: 'Conserva el amor y los recuerdos de quien siempre formará parte de tu corazón. Incluye una urna personalizada con vinilo premium y un cuadro con la fotografía de tu compañero, con marco en el color que elijas.', img: '/images/plus-premium.webp', price: 500 },
+    { id: 'vinilo-personalizado', eyebrow: 'Personalización', name: 'Personalización de vinil', desc: 'Añade un acabado de vinilo premium a una urna, eligiendo entre cuatro colores.', img: '/images/vinilo-premium.webp', price: 100, personalization: { type: 'vinyl-color', colors: ['Plateado', 'Blanco', 'Negro', 'Dorado'] } },
     { id: 'huella', eyebrow: 'Recuerdo', name: 'Huella con su pelo', desc: 'Un recuerdo íntimo y delicado, hecho con un poco de su pelo.', img: '/images/thumb-huella.jpg', price: 200 },
     { id: 'cert', eyebrow: 'Documento', name: 'Certificado físico adicional', desc: 'Una copia impresa de su certificado, para guardarla con cariño.', img: '/images/thumb-certificado.jpg', price: 50 }
   ];
@@ -48,7 +49,8 @@
     '/images/urna-clasica.png', '/images/urna-luna.png', '/images/urna-talavera.png', '/images/urna-talavera-pewter.png',
     '/images/urna-hueso-huella.png', '/images/urna-corazon.png', '/images/urna-casita-lisa.png', '/images/urna-casita-teja.png',
     '/images/urna-hueso-cromado.png', '/images/thumb-plus.jpg', '/images/thumb-huella.jpg', '/images/thumb-certificado.jpg',
-    '/images/homenaje-grande.jpg', '/images/huella-grande.jpg', '/images/certificado-grande.jpg', '/images/marcos.jpg', '/images/vinilos.jpg'
+    '/images/homenaje-grande.jpg', '/images/huella-grande.jpg', '/images/certificado-grande.jpg', '/images/marcos.jpg', '/images/vinilos.jpg',
+    '/images/plus-premium.webp', '/images/vinilo-premium.webp', '/images/urn-sample.webp'
   ];
 
   /* ---------- Utilidades ---------- */
