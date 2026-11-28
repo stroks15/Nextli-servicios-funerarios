@@ -204,3 +204,6 @@ body.worker-mode{padding-bottom:84px}
 
 /* Campos editables del resumen: mantienen el mismo estado usado por WhatsApp y la nota PDF */
 .summary-edit-line select,.summary-edit-line input{max-width:190px;width:48%;min-width:120px;padding:8px 10px;border:1px solid rgba(23,38,58,.2);border-radius:8px;background:#fff;color:#17263a;font:500 13px Poppins,sans-serif}.summary-edit-message{display:grid;gap:6px;padding:10px 0;border-bottom:1px solid rgba(23,38,58,.09)}.summary-edit-message label{font-size:13px;color:#5b6471}.summary-edit-message textarea{width:100%;max-width:100%;resize:vertical;padding:9px 11px;border:1px solid rgba(23,38,58,.2);border-radius:8px;background:#fff;color:#17263a;font:400 13px Poppins,sans-serif}.summary-edit-message small{justify-self:end;color:#687386;font-size:11px}
+
+/* Muestra única del marco: vector limpio, independiente de la fotografía y recoloreable por completo */
+.frame-preview-shell{width:min(100%,330px);height:410px;margin:10px auto 14px;overflow:visible;border-radius:0;background:transparent;--frame-light:#f4f6f8;--frame-mid:#b9c0c9;--frame-dark:#68717c}.frame-preview-shell svg{display:block;width:100%;height:100%;overflow:visible}.frame-preview-shell img,.frame-tint{display:none}@media(max-width:480px){.frame-preview-shell{height:370px}}
