@@ -531,46 +531,44 @@
   }
 
   function buildPdf(jpeg, imgW, imgH, title) {
-    const enc = new TextEncoder();
-    const parts = [];
-    const offsets = [];
-    let length = 0;
-    const push = data => {
-      const bytes = typeof data === 'string' ? enc.encode(data) : data;
-      parts.push(bytes); length += bytes.length;
+    const enc = new TextEncoder(), chunks = [], offsets = [0];
+    let byteLength = 0;
+    const push = value => {
+      const bytes = typeof value === 'string' ? enc.encode(value) : value;
+      chunks.push(bytes); byteLength += bytes.byteLength;
     };
-    const obj = (n, body) => { offsets[n] = length; push(`${n} 0 obj\n`); push(body); push('\nendobj\n'); };
-
-    push('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n');
-    obj(1, '<< /Type /Catalog /Pages 2 0 R >>');
-    obj(2, '<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
-    obj(3, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_W} ${PAGE_H}] /Resources << /XObject << /Im0 4 0 R >> /ProcSet [/PDF /ImageC] >> /Contents 5 0 R >>`);
-    // Imagen
-    offsets[4] = length;
-    push(`4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${imgW} /Height ${imgH} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.length} >>\nstream\n`);
-    push(jpeg);
-    push('\nendstream\nendobj\n');
-    const content = `q ${PAGE_W} 0 0 ${PAGE_H} 0 0 cm /Im0 Do Q`;
-    obj(5, `<< /Length ${content.length} >>\nstream\n${content}\nendstream`);
-    const safeTitle = String(title || 'Certificado de cremación').replace(/[()\\]/g, '').replace(/[^\x20-\x7E]/g, '');
-    obj(6, `<< /Title (${safeTitle}) /Producer (NEXTLI) >>`);
-
-    const xrefPos = length;
-    let xref = `xref\n0 7\n0000000000 65535 f \n`;
-    for (let i = 1; i <= 6; i++) xref += String(offsets[i]).padStart(10, '0') + ' 00000 n \n';
+    const object = (id, body) => {
+      offsets[id] = byteLength;
+      push(id + ' 0 obj\n'); push(body); push('\nendobj\n');
+    };
+    if (!(jpeg instanceof Uint8Array) || jpeg.length < 4 || jpeg[0] !== 0xff || jpeg[1] !== 0xd8 || jpeg[jpeg.length-2] !== 0xff || jpeg[jpeg.length-1] !== 0xd9) {
+      throw new Error('La imagen de la nota no es un JPEG válido.');
+    }
+    push('%PDF-1.4\n% NEXTLI\n');
+    object(1, '<< /Type /Catalog /Pages 2 0 R >>');
+    object(2, '<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
+    object(3, '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + PAGE_W + ' ' + PAGE_H + '] /Resources << /XObject << /Im0 4 0 R >> /ProcSet [/PDF /ImageC] >> /Contents 5 0 R >>');
+    offsets[4] = byteLength;
+    push('4 0 obj\n<< /Type /XObject /Subtype /Image /Width ' + imgW + ' /Height ' + imgH + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + jpeg.byteLength + ' >>\nstream\n');
+    push(jpeg); push('\nendstream\nendobj\n');
+    const contentBytes = enc.encode('q ' + PAGE_W + ' 0 0 ' + PAGE_H + ' 0 0 cm /Im0 Do Q');
+    object(5, '<< /Length ' + contentBytes.byteLength + ' >>\nstream\n' + new TextDecoder().decode(contentBytes) + '\nendstream');
+    const safeTitle = String(title || 'Nota de remisión NEXTLI').replace(/[()\\]/g, '').replace(/[^\x20-\x7E]/g, '');
+    object(6, '<< /Title (' + safeTitle + ') /Producer (NEXTLI) >>');
+    const xrefOffset = byteLength;
+    let xref = 'xref\n0 7\n0000000000 65535 f \n';
+    for (let i=1;i<=6;i++) xref += String(offsets[i]).padStart(10,'0') + ' 00000 n \n';
     push(xref);
-    push(`trailer\n<< /Size 7 /Root 1 0 R /Info 6 0 R >>\nstartxref\n${xrefPos}\n%%EOF`);
-
-    const out = new Uint8Array(length);
-    let p = 0;
-    parts.forEach(b => { out.set(b, p); p += b.length; });
+    push('trailer\n<< /Size 7 /Root 1 0 R /Info 6 0 R >>\nstartxref\n' + xrefOffset + '\n%%EOF\n');
+    const out = new Uint8Array(byteLength);
+    let cursor=0; for (const part of chunks) { out.set(part,cursor); cursor+=part.byteLength; }
     return out;
   }
 
   async function toPdfBlob(canvas, title) {
     const jpeg = await canvasToJpegBytes(canvas, 0.93);
     const bytes = buildPdf(jpeg, canvas.width, canvas.height, title);
-    return new Blob([bytes], { type: 'application/pdf' });
+    return new Blob([bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)], { type: 'application/pdf' });
   }
 
   window.NextliCertificate = { render, toPdfBlob, formatDate, formatAge, speciesLabel, REF_W, REF_H };
