@@ -204,7 +204,7 @@ function buildExtraCards() {
       config.className = 'personalization-config';
       config.dataset.vinylExtraConfig = '';
       config.hidden = true;
-      config.innerHTML = '<h6>Personaliza el color del vinilo</h6><img class="personalization-preview" data-vinyl-extra-preview src="/images/plus-urna-plateado.webp" alt="Urna de muestra con vinilo plateado" loading="lazy"><div class="vinyl-colors" role="group" aria-label="Color del vinilo del complemento">' + ['Plateado','Blanco','Negro','Dorado'].map(color => '<button type="button" class="color-swatch ' + (color === state.vinylExtraColor ? 'selected' : '') + '" data-vinyl-extra-color="' + color + '" aria-pressed="' + (color === state.vinylExtraColor) + '">' + color + '</button>').join('') + '</div>';
+      config.innerHTML = '<h6>Personaliza el color del vinilo</h6><div class="urn-preview-shell"><img src="/images/urn-sample.webp" alt="Urna de muestra con diseño de vinilo premium" loading="lazy"><div class="vinyl-tint" data-vinyl-tint aria-hidden="true"></div></div><div class="vinyl-colors" role="group" aria-label="Color del vinilo del complemento">' + ['Plateado','Blanco','Negro','Dorado'].map(color => '<button type="button" class="color-swatch ' + (color === state.vinylExtraColor ? 'selected' : '') + '" data-vinyl-extra-color="' + color + '" aria-pressed="' + (color === state.vinylExtraColor) + '">' + color + '</button>').join('') + '</div>';
       c.querySelector('.pcard-body').appendChild(config);
       config.querySelectorAll('[data-vinyl-extra-color]').forEach(b => b.addEventListener('click', e => {
         e.stopPropagation();
@@ -266,12 +266,15 @@ function extrasList() {
   if (isCom()) return [];
   return [...INV.extras().filter(x => extraQty(x.id) > 0).map(x => `${extraQty(x.id)}x ${x.name} (+${money(extraQty(x.id) * x.price)} MXN)`), state.plus ? `Color del marco incluido: ${state.frame}` : null, state.plus ? `Vinilo premium de la urna incluida: ${state.color}` : null, state.plus && state.plusMessage.trim() ? `Mensaje personalizado: ${state.plusMessage.trim()}` : null, extraQty('vinilo-personalizado') > 0 ? `Color del vinilo del complemento: ${state.vinylExtraColor}` : null].filter(Boolean);
 }
-function colorSlug(color) { return ({ Plateado: 'plateado', Blanco: 'blanco', Negro: 'negro', Dorado: 'dorado' })[color] || 'plateado'; }
+function colorHex(color) { return ({ Plateado: '#aeb4bd', Blanco: '#f7f5ef', Negro: '#171719', Dorado: '#c69a45' })[color] || '#aeb4bd'; }
 function updatePersonalizationPreviews() {
-  const frame = $('plusFramePreview'), urn = $('plusUrnPreview');
-  if (frame) frame.src = `/images/plus-frame-${colorSlug(state.frame)}.webp`;
-  if (urn) urn.src = `/images/plus-urna-${colorSlug(state.color)}.webp`;
-  document.querySelectorAll('[data-vinyl-extra-preview]').forEach(img => { img.src = `/images/plus-urna-${colorSlug(state.vinylExtraColor)}.webp`; });
+  const frameTint = $('plusFrameTint');
+  if (frameTint) frameTint.style.backgroundColor = colorHex(state.frame);
+  const plusTint = $('plusUrnTint');
+  if (plusTint) plusTint.style.backgroundColor = colorHex(state.color);
+  document.querySelectorAll('[data-vinyl-tint]').forEach(layer => {
+    layer.style.backgroundColor = colorHex(state.vinylExtraColor);
+  });
 }
 function updatePriceLabels() {
   const all = getUrns().filter(u => !u.soldOut).flatMap(u => Object.values(u.prices));
@@ -443,7 +446,15 @@ $('confirmWeightBtn').onclick = () => { if (!state.weight) return; state.weightC
 $('next2').onclick = () => goTo(isCom() ? 4 : 3);
 document.querySelectorAll('[data-frame-color]').forEach(x => x.onclick = () => { document.querySelectorAll('[data-frame-color]').forEach(y => { y.classList.remove('selected'); y.setAttribute('aria-pressed','false'); }); x.classList.add('selected'); x.setAttribute('aria-pressed','true'); state.frame = x.dataset.frameColor; updatePersonalizationPreviews(); });
 document.querySelectorAll('[data-color]').forEach(x => x.onclick = () => { document.querySelectorAll('[data-color]').forEach(y => { y.classList.remove('selected'); y.setAttribute('aria-pressed','false'); }); x.classList.add('selected'); x.setAttribute('aria-pressed','true'); state.color = x.dataset.color; updatePersonalizationPreviews(); });
-$('plusMessage').oninput = e => { state.plusMessage = String(e.target.value || '').slice(0,60); if (e.target.value !== state.plusMessage) e.target.value = state.plusMessage; $('plusMessageCount').textContent = `${state.plusMessage.length}/60 caracteres`; };
+$('plusMessage').oninput = e => {
+  const raw = String(e.target.value || '');
+  const parts = typeof Intl !== 'undefined' && Intl.Segmenter
+    ? Array.from(new Intl.Segmenter('es', { granularity: 'grapheme' }).segment(raw), part => part.segment)
+    : Array.from(raw);
+  state.plusMessage = parts.slice(0,60).join('');
+  if (e.target.value !== state.plusMessage) e.target.value = state.plusMessage;
+  $('plusMessageCount').textContent = `${parts.length > 60 ? 60 : parts.length}/60 caracteres`;
+};
 $('next3').onclick = () => goTo(4);
 document.querySelectorAll('[data-back]').forEach(b => b.onclick = () => {
   const to = +b.dataset.back;
