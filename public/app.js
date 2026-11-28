@@ -498,6 +498,7 @@ $('sendClientWa').onclick = () => {
   if (!requiredOk()) { alert('Completa primero todos los datos obligatorios.'); return; }
   const phone = normalizePhone(val('ownerPhone'));
   if (phone.length < 10) { alert('Revisa el teléfono del cliente: parece incompleto.'); return; }
+  if (!confirm('Vas a enviar el resumen a ' + val('ownerName') + ' al número +' + phone + '. ¿Es el teléfono del cliente?')) return;
   window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(buildMessage('recibo')), '_blank');
   generateCertificate();
 };
@@ -547,77 +548,78 @@ async function generateCertificate() {
   } finally { ok.disabled = false; }
 }
 function safe(s) { return String(s).replace(/[\/:*?"<>|]+/g, '-').replace(/\s+/g, '-').replace(/^-|-$/g, '') || 'Cremacion-Nextli'; }
-async function downloadRemisionPdf() {
-  if (!workerMode) { alert('La nota de remisión la genera el equipo NEXTLI.'); return; }
-  if (!requiredOk()) { alert('Completa primero todos los datos obligatorios.'); return; }
-  const canvas = document.createElement('canvas');
-  canvas.width = 1600; canvas.height = 1237;
-  const ctx = canvas.getContext('2d');
-  const ink = '#17263a', muted = '#687386', gold = '#b8944d', paper = '#fbf8f0';
-  ctx.fillStyle = paper; ctx.fillRect(0,0,canvas.width,canvas.height);
-  ctx.fillStyle = ink; ctx.font = 'bold 54px Georgia'; ctx.fillText('NEXTLI', 90, 105);
-  ctx.font = '24px Arial'; ctx.fillStyle = muted; ctx.fillText('SERVICIOS FUNERARIOS · ACOMPAÑAMIENTO CON AMOR', 92, 145);
-  ctx.textAlign = 'right'; ctx.font = 'bold 42px Georgia'; ctx.fillStyle = ink; ctx.fillText('NOTA DE REMISIÓN', 1510, 105);
-  ctx.font = '22px Arial'; ctx.fillStyle = muted; ctx.fillText(nowStamp(), 1510, 145); ctx.textAlign = 'left';
-  ctx.fillStyle = gold; ctx.fillRect(90,180,1420,4);
-  ctx.font = 'bold 25px Arial'; ctx.fillStyle = ink; ctx.fillText('DATOS DEL SERVICIO', 90, 238);
-  ctx.font = '22px Arial'; ctx.fillStyle = muted;
-  ctx.fillText('Mascota: ' + val('petName'), 90, 286);
-  ctx.fillText('Especie / raza: ' + speciesLabel() + (state.breed ? ' / ' + state.breed : ''), 90, 326);
-  ctx.fillText('Servicio: ' + (isCom() ? 'Cremación comunitaria' : 'Cremación individual'), 90, 366);
-  ctx.fillText('Tamaño / peso: ' + (SIZE_LABEL[state.weight] || '—'), 90, 406);
-  ctx.fillText('Propietario: ' + val('ownerName'), 850, 286);
-  ctx.fillText('Teléfono: ' + val('ownerPhone'), 850, 326);
-  ctx.fillText('Dirección: ' + val('ownerAddress'), 850, 366);
-  ctx.fillText('Fecha de defunción: ' + fmtDate(), 850, 406);
-  ctx.fillStyle = gold; ctx.fillRect(90,445,1420,2);
-  ctx.font = 'bold 25px Arial'; ctx.fillStyle = ink; ctx.fillText('CONCEPTOS Y PERSONALIZACIÓN', 90, 500);
-  let y = 552;
-  const drawRow = (label, amount, sub=false) => {
-    ctx.font = sub ? '19px Arial' : 'bold 22px Arial';
-    ctx.fillStyle = sub ? muted : ink;
-    ctx.fillText(label, sub ? 125 : 90, y);
-    if (amount) { ctx.textAlign='right'; ctx.fillText(amount,1510,y); ctx.textAlign='left'; }
-    y += sub ? 34 : 46;
+let remisionCanvas = null;
+function buildRemisionCanvas() {
+  const canvas=document.createElement('canvas'); canvas.width=1600; canvas.height=1237;
+  const ctx=canvas.getContext('2d'), ink='#17263a', muted='#687386', gold='#b8944d', paper='#fbf8f0';
+  ctx.fillStyle=paper;ctx.fillRect(0,0,1600,1237);
+  ctx.fillStyle=ink;ctx.font='bold 54px Georgia';ctx.fillText('NEXTLI',90,105);
+  ctx.font='24px Arial';ctx.fillStyle=muted;ctx.fillText('SERVICIOS FUNERARIOS · ACOMPAÑAMIENTO CON AMOR',92,145);
+  ctx.textAlign='right';ctx.font='bold 42px Georgia';ctx.fillStyle=ink;ctx.fillText('NOTA DE REMISIÓN',1510,105);
+  ctx.font='22px Arial';ctx.fillStyle=muted;ctx.fillText(nowStamp(),1510,145);ctx.textAlign='left';
+  ctx.fillStyle=gold;ctx.fillRect(90,180,1420,4);
+  ctx.font='bold 25px Arial';ctx.fillStyle=ink;ctx.fillText('DATOS DEL SERVICIO',90,238);
+  ctx.font='22px Arial';ctx.fillStyle=muted;
+  ctx.fillText('Mascota: '+val('petName'),90,286);
+  ctx.fillText('Especie / raza: '+speciesLabel()+(state.breed?' / '+state.breed:''),90,326);
+  ctx.fillText('Servicio: '+(isCom()?'Cremación comunitaria':'Cremación individual'),90,366);
+  ctx.fillText('Tamaño / peso: '+(SIZE_LABEL[state.weight]||'—'),90,406);
+  ctx.fillText('Propietario: '+val('ownerName'),850,286);ctx.fillText('Teléfono: '+val('ownerPhone'),850,326);
+  ctx.fillText('Dirección: '+val('ownerAddress'),850,366);ctx.fillText('Fecha de defunción: '+fmtDate(),850,406);
+  ctx.fillStyle=gold;ctx.fillRect(90,445,1420,2);ctx.font='bold 25px Arial';ctx.fillStyle=ink;ctx.fillText('CONCEPTOS Y PERSONALIZACIÓN',90,500);
+  let y=552;
+  const drawRow=(label,amount,sub=false)=>{
+    ctx.font=sub?'19px Arial':'bold 22px Arial';ctx.fillStyle=sub?muted:ink;
+    const max=amount?1120:1390,words=String(label).split(/\s+/);let line='';
+    for(const word of words){const test=line?line+' '+word:word;if(ctx.measureText(test).width>max&&line){ctx.fillText(line,sub?125:90,y);y+=sub?27:30;line=word;}else line=test;}
+    if(line)ctx.fillText(line,sub?125:90,y);
+    if(amount){ctx.textAlign='right';ctx.fillText(amount,1510,y);ctx.textAlign='left';}y+=sub?34:46;
   };
-  if (isCom()) drawRow('Cremación comunitaria', money(calcBase()) + ' MXN');
-  else {
-    const urn = getUrn(state.urnId);
-    drawRow(urn?.name || 'Urna seleccionada', money(calcBase()) + ' MXN');
-  }
-  if (state.plus) {
-    const plus = getExtra('plus');
-    drawRow('Paquete Plus — cuadro y urna personalizada', money((plus?.price || 0) * extraQty('plus')) + ' MXN');
-    drawRow('Cuadro con fotografía y marco: incluido', '');
-    drawRow('Color del marco incluido: ' + state.frame, '', true);
-    drawRow('Color del vinilo premium de la urna: ' + state.color, '', true);
-    if (state.plusMessage.trim()) drawRow('Mensaje para la mascota: ' + state.plusMessage.trim(), '', true);
-  }
-  INV.extras().filter(x => !['plus','vinilo-personalizado'].includes(x.id) && extraQty(x.id)>0).forEach(x => drawRow(extraQty(x.id) + ' × ' + x.name, money(extraQty(x.id)*x.price) + ' MXN'));
-  if (extraQty('vinilo-personalizado') > 0) {
-    const vinyl = getExtra('vinilo-personalizado');
-    drawRow('Complemento: Personalización de vinil', money((vinyl?.price || 100)*extraQty('vinilo-personalizado')) + ' MXN');
-    drawRow('Color del vinilo del complemento: ' + state.vinylExtraColor, '', true);
-  }
-  ctx.fillStyle = gold; ctx.fillRect(90,Math.min(y+12,1050),1420,3);
-  const totalY = Math.min(y+72,1110);
-  ctx.font = 'bold 32px Arial'; ctx.fillStyle = ink; ctx.fillText('TOTAL', 90, totalY);
-  ctx.textAlign='right'; ctx.fillText(money(total()) + ' MXN',1510,totalY); ctx.textAlign='left';
-  const p = paymentInfo();
-  ctx.font = '20px Arial'; ctx.fillStyle = muted;
-  ctx.fillText('Pago: ' + p.label + ' · Abonado: ' + money(p.paid) + ' · Saldo: ' + money(p.balance) + ' MXN',90,Math.min(totalY+54,1180));
-  ctx.font = 'italic 20px Georgia'; ctx.fillStyle = muted;
-  ctx.fillText('Gracias por permitirnos honrar la vida de tu compañero. Estamos contigo.',90,1205);
-  const btn = $('downloadRemision'); btn.disabled = true;
-  try {
-    const blob = await CERT.toPdfBlob(canvas, 'Nota de remision NEXTLI');
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-    a.download = 'Nota-Remision-' + safe(val('petName')) + '-' + safe(val('ownerName')) + '.pdf';
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 15000);
-  } catch (e) { console.error(e); alert('No se pudo generar la nota de remisión. Inténtalo de nuevo.'); }
-  finally { btn.disabled = false; }
+  if(isCom())drawRow('Cremación comunitaria',money(calcBase())+' MXN');
+  else{const urn=getUrn(state.urnId);drawRow(urn?.name||'Urna seleccionada',money(calcBase())+' MXN');}
+  if(state.plus){const plus=getExtra('plus');drawRow('Paquete Plus — cuadro con fotografía y marco incluido',money((plus?.price||0)*extraQty('plus'))+' MXN');drawRow('Color del marco: '+state.frame,'',true);drawRow('Color del vinilo premium de la urna: '+state.color,'',true);if(state.plusMessage.trim())drawRow('Mensaje personalizado: '+state.plusMessage.trim(),'',true);}
+  INV.extras().filter(x=>!['plus','vinilo-personalizado'].includes(x.id)&&extraQty(x.id)>0).forEach(x=>drawRow(extraQty(x.id)+' × '+x.name,money(extraQty(x.id)*x.price)+' MXN'));
+  if(extraQty('vinilo-personalizado')>0){const vinyl=getExtra('vinilo-personalizado');drawRow('Complemento: Personalización de vinil',money((vinyl?.price||100)*extraQty('vinilo-personalizado'))+' MXN');drawRow('Color del vinilo del complemento: '+state.vinylExtraColor,'',true);}
+  ctx.fillStyle=gold;ctx.fillRect(90,Math.min(y+12,1080),1420,3);const totalY=Math.min(y+72,1130);
+  ctx.font='bold 32px Arial';ctx.fillStyle=ink;ctx.fillText('TOTAL',90,totalY);ctx.textAlign='right';ctx.fillText(money(total())+' MXN',1510,totalY);ctx.textAlign='left';
+  ctx.font='italic 20px Georgia';ctx.fillStyle=muted;ctx.fillText('Gracias por permitirnos honrar la vida de tu compañero. Estamos contigo.',90,1205);
+  return canvas;
 }
+function closeRemisionPreview(){const o=$('remisionPreview');if(!o)return;o.classList.remove('open');o.setAttribute('aria-hidden','true');$('remisionPreviewMount').innerHTML='';remisionCanvas=null;}
+async function generateRemisionPreview(){
+  if(!workerMode){alert('La nota de remisión la genera el equipo NEXTLI.');return;}
+  if(!requiredOk()){alert('Completa primero todos los datos obligatorios.');return;}
+  const overlay=$('remisionPreview'),mount=$('remisionPreviewMount');mount.innerHTML='<div class="cert-loading" style="padding:30px;text-align:center">Preparando la nota de remisión…</div>';overlay.classList.add('open');overlay.setAttribute('aria-hidden','false');
+  try{remisionCanvas=buildRemisionCanvas();mount.innerHTML='';const wrap=document.createElement('div');wrap.className='remision-canvas-wrap';wrap.appendChild(remisionCanvas);mount.appendChild(wrap);}
+  catch(e){console.error(e);mount.textContent='No se pudo preparar la nota. Inténtalo de nuevo.';}
+}
+async function createRemisionFile(){
+  if(!remisionCanvas)remisionCanvas=buildRemisionCanvas();
+  const blob=await CERT.toPdfBlob(remisionCanvas,'Nota de remision NEXTLI');
+  if(!(blob instanceof Blob)||blob.type!=='application/pdf'||blob.size<1000)throw new Error('El PDF generado no es válido.');
+  return new File([blob],'Nota-Remision-'+safe(val('petName'))+'-'+safe(val('ownerName'))+'.pdf',{type:'application/pdf'});
+}
+async function downloadRemisionPdf(){
+  if(!workerMode)return;const btn=$('downloadRemisionPdfPreview');if(btn)btn.disabled=true;
+  try{const file=await createRemisionFile(),url=URL.createObjectURL(file),a=document.createElement('a');a.href=url;a.download=file.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);}
+  catch(e){console.error(e);alert('No se pudo generar un PDF válido. Vuelve a abrir la vista previa e inténtalo otra vez.');}
+  finally{if(btn)btn.disabled=false;}
+}
+async function sendRemisionToClient(){
+  if(!workerMode)return;const btn=$('sendRemisionToClient');btn.disabled=true;
+  try{
+    const phone=normalizePhone(val('ownerPhone'));if(!/^52\d{10}$|^\d{11,15}$/.test(phone)){alert('Revisa el teléfono del cliente antes de compartir la nota.');return;}
+    const file=await createRemisionFile(),textMessage=buildMessage('recibo');
+    if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]}))await navigator.share({files:[file],title:'Nota de remisión NEXTLI',text:textMessage});
+    else{
+      const url='https://wa.me/'+phone+'?text='+encodeURIComponent(textMessage+'\n\nTe comparto la nota de remisión en PDF. Adjuntaré el archivo en este chat.');
+      window.open(url,'_blank','noopener,noreferrer');const blobUrl=URL.createObjectURL(file),a=document.createElement('a');a.href=blobUrl;a.download=file.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(blobUrl),60000);
+      alert('Se abrió el chat del cliente y se descargó el PDF. Adjunta el archivo descargado en WhatsApp para enviarlo.');
+    }
+  }catch(e){if(e&&e.name!=='AbortError'){console.error(e);alert('No se pudo compartir la nota PDF. Puedes descargarla y adjuntarla manualmente.');}}
+  finally{btn.disabled=false;}
+}
+$('downloadRemision').onclick=generateRemisionPreview;
 
 async function downloadCertificatePdf() {
   if (!workerMode) { alert('El certificado lo genera el equipo NEXTLI.'); return; }
@@ -634,6 +636,10 @@ async function downloadCertificatePdf() {
   finally { btn.disabled = false; }
 }
 $('confirmCertificateDownload').onclick = downloadCertificatePdf;
+$('closeRemisionPreview').onclick = closeRemisionPreview;
+$('cancelRemisionPreview').onclick = closeRemisionPreview;
+$('downloadRemisionPdfPreview').onclick = downloadRemisionPdf;
+$('sendRemisionToClient').onclick = sendRemisionToClient;
 $('closeCertificatePreview').onclick = closeCertificatePreview;
 $('cancelCertificatePreview').onclick = closeCertificatePreview;
 
