@@ -269,12 +269,15 @@ function extrasList() {
 function colorHex(color) { return ({ Plateado: '#aeb4bd', Blanco: '#f7f5ef', Negro: '#171719', Dorado: '#c69a45' })[color] || '#aeb4bd'; }
 function updatePersonalizationPreviews() {
   const frameTint = $('plusFrameTint');
-  if (frameTint) frameTint.style.backgroundColor = colorHex(state.frame);
+  if (frameTint) { frameTint.style.backgroundColor = colorHex(state.frame); frameTint.style.mixBlendMode = state.frame === 'Blanco' ? 'screen' : 'multiply'; }
   const plusTint = $('plusUrnTint');
   if (plusTint) plusTint.style.backgroundColor = colorHex(state.color);
   document.querySelectorAll('[data-vinyl-tint]').forEach(layer => {
     layer.style.backgroundColor = colorHex(state.vinylExtraColor);
   });
+  document.querySelectorAll('[data-frame-color]').forEach(b => { const on=b.dataset.frameColor===state.frame;b.classList.toggle('selected',on);b.setAttribute('aria-pressed',String(on)); });
+  document.querySelectorAll('[data-color]').forEach(b => { const on=b.dataset.color===state.color;b.classList.toggle('selected',on);b.setAttribute('aria-pressed',String(on)); });
+  document.querySelectorAll('[data-vinyl-extra-color]').forEach(b => { const on=b.dataset.vinylExtraColor===state.vinylExtraColor;b.classList.toggle('selected',on);b.setAttribute('aria-pressed',String(on)); });
 }
 function updatePriceLabels() {
   const all = getUrns().filter(u => !u.soldOut).flatMap(u => Object.values(u.prices));
@@ -398,9 +401,12 @@ function renderSummary() {
     const update = () => {
       const field = control.dataset.summaryField, value = control.value;
       if (field === 'plusMessage') {
-        const chars = Array.from(value).slice(0,60); state.plusMessage = chars.join('');
+        const chars = typeof Intl !== 'undefined' && Intl.Segmenter ? Array.from(new Intl.Segmenter('es',{granularity:'grapheme'}).segment(value),part=>part.segment).slice(0,60) : Array.from(value).slice(0,60);
+        state.plusMessage = chars.join('');
         if (control.value !== state.plusMessage) control.value = state.plusMessage;
+        const original = $('plusMessage'); if (original) original.value = state.plusMessage;
         const count = $('summaryPlusCount'); if (count) count.textContent = String(chars.length);
+        const originalCount = $('plusMessageCount'); if (originalCount) originalCount.textContent = chars.length + '/60 caracteres';
       } else if (field === 'ownerPhone') {
         $('ownerPhone').value = value.replace(/[^0-9+()\s-]/g,'').slice(0,20);
         control.value = $('ownerPhone').value;
