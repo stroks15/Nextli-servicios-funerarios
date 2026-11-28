@@ -50,7 +50,7 @@
     '/images/urna-hueso-huella.png', '/images/urna-corazon.png', '/images/urna-casita-lisa.png', '/images/urna-casita-teja.png',
     '/images/urna-hueso-cromado.png', '/images/thumb-plus.jpg', '/images/thumb-huella.jpg', '/images/thumb-certificado.jpg',
     '/images/homenaje-grande.jpg', '/images/huella-grande.jpg', '/images/certificado-grande.jpg', '/images/marcos.jpg', '/images/vinilos.jpg',
-    '/images/plus-premium.webp', '/images/vinilo-premium.webp', '/images/plus-frame-plateado.webp', '/images/plus-frame-blanco.webp', '/images/plus-frame-negro.webp', '/images/plus-frame-dorado.webp', '/images/plus-urna-plateado.webp', '/images/plus-urna-blanco.webp', '/images/plus-urna-negro.webp', '/images/plus-urna-dorado.webp'
+    '/images/plus-premium.webp', '/images/vinilo-premium.webp', '/images/urn-sample.webp', '/images/urn-vinyl-mask.png'
   ];
 
   /* ---------- Utilidades ---------- */
