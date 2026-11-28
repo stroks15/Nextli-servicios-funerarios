@@ -647,6 +647,7 @@ async function sendRemisionToClient(){
   if(!workerMode)return;const btn=$('sendRemisionToClient');btn.disabled=true;
   try{
     const phone=normalizePhone(val('ownerPhone'));if(!/^52\d{10}$|^\d{11,15}$/.test(phone)){alert('Revisa el teléfono del cliente antes de compartir la nota.');return;}
+    if(!confirm('Vas a compartir el PDF de '+val('ownerName')+' para el número +'+phone+'. Al elegir WhatsApp, confirma ese mismo contacto. ¿Continuar?'))return;
     const file=await createRemisionFile(),textMessage=buildMessage('recibo');
     if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]}))await navigator.share({files:[file],title:'Nota de remisión NEXTLI',text:textMessage});
     else{
