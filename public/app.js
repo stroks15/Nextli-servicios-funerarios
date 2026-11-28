@@ -109,12 +109,6 @@ function buildUrnCards() {
     c.className = 'pcard'; c.dataset.id = u.id; c.setAttribute('role', 'button'); c.tabIndex = 0;
     c.innerHTML = `<div class="pcard-media"><span class="pcard-badge" hidden></span><img src="${esc(u.img)}" alt="${esc(u.name)}" loading="lazy" decoding="async"></div>
       <div class="pcard-body"><h5>${esc(u.name)}</h5><p class="pcard-desc">${esc(u.desc)}</p><div class="pcard-price"></div></div>`;
-    if (x.id === 'vinilo-personalizado') {
-      const config = document.createElement('div'); config.className = 'personalization-config'; config.dataset.vinylExtraConfig = ''; config.hidden = true;
-      config.innerHTML = '<h6>Personaliza el color del vinilo</h6><img class="personalization-preview" data-vinyl-extra-preview src="/images/plus-urna-plateado.webp" alt="Ejemplo de urna con vinilo premium" loading="lazy"><div class="vinyl-colors" role="group" aria-label="Color del vinilo del complemento">' + ['Plateado','Blanco','Negro','Dorado'].map(color => '<button type="button" class="color-swatch ' + (color === 'Plateado' ? 'selected' : '') + '" data-vinyl-extra-color="' + color + '" aria-pressed="' + (color === 'Plateado') + '">' + color + '</button>').join('') + '</div>';
-      c.querySelector('.pcard-body').appendChild(config);
-      config.querySelectorAll('[data-vinyl-extra-color]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); state.vinylExtraColor = b.dataset.vinylExtraColor; updatePersonalizationPreviews(); refreshExtraCards(); }));
-    }
     localizeImg(c.querySelector('img'));
     const pick = () => selectUrn(u.id);
     c.onclick = pick; c.onkeydown = e => cardKey(e, pick);
@@ -205,10 +199,24 @@ function buildExtraCards() {
       <div class="pcard-body"><p class="pcard-eyebrow">${esc(x.eyebrow)}</p><h5>${esc(x.name)}</h5><p class="pcard-desc">${esc(x.desc)}</p>
       <div class="pcard-price">+${money(x.price)} <small>MXN / unidad</small></div><button type="button" class="pcard-cta" tabindex="-1"></button><div class="extra-qty"><button type="button" data-qty-change="-1" aria-label="Quitar una unidad">−</button><output data-qty-value>0</output><button type="button" data-qty-change="1" aria-label="Agregar una unidad">+</button></div></div>`;
     localizeImg(c.querySelector('img'));
+    if (x.id === 'vinilo-personalizado') {
+      const config = document.createElement('div');
+      config.className = 'personalization-config';
+      config.dataset.vinylExtraConfig = '';
+      config.hidden = true;
+      config.innerHTML = '<h6>Personaliza el color del vinilo</h6><img class="personalization-preview" data-vinyl-extra-preview src="/images/plus-urna-plateado.webp" alt="Urna de muestra con vinilo plateado" loading="lazy"><div class="vinyl-colors" role="group" aria-label="Color del vinilo del complemento">' + ['Plateado','Blanco','Negro','Dorado'].map(color => '<button type="button" class="color-swatch ' + (color === state.vinylExtraColor ? 'selected' : '') + '" data-vinyl-extra-color="' + color + '" aria-pressed="' + (color === state.vinylExtraColor) + '">' + color + '</button>').join('') + '</div>';
+      c.querySelector('.pcard-body').appendChild(config);
+      config.querySelectorAll('[data-vinyl-extra-color]').forEach(b => b.addEventListener('click', e => {
+        e.stopPropagation();
+        state.vinylExtraColor = b.dataset.vinylExtraColor;
+        updatePersonalizationPreviews();
+        refreshExtraCards();
+      }));
+    }
     const tog = () => toggleExtra(x.id);
     c.onclick = e => { if (e.target.closest('[data-qty-change],[data-vinyl-extra-color]')) return; tog(); };
     c.querySelectorAll('[data-qty-change]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); changeExtraQty(x.id, Number(b.dataset.qtyChange)); }));
-    c.onkeydown = e => { if (!e.target.closest('[data-qty-change]')) cardKey(e, tog); };
+    c.onkeydown = e => { if (!e.target.closest('[data-qty-change],[data-vinyl-extra-color]')) cardKey(e, tog); };
     track.appendChild(c);
   });
   track.scrollLeft = left; extrasDirty = false;
@@ -378,7 +386,7 @@ ${isCom() ? '' : `*Urna:* ${urn?.name || '—'}\n`}*Tamaño / peso:* ${SIZE_LABE
 function line(a, b) { return `<div class="summary-line"><span>${a}</span><b>${esc(b)}</b></div>`; }
 function renderSummary() {
   const urn = getUrn(state.urnId), plus = getExtra('plus'), vinyl = getExtra('vinilo-personalizado');
-  const plusLines = state.plus ? line('Paquete Plus', `${plus?.name || 'Paquete Plus'} (+${money((plus?.price || 0) * extraQty('plus'))} MXN)`) + line('Color del marco incluido', state.frame) + line('Vinilo premium de la urna', state.color) + (state.plusMessage.trim() ? line('Mensaje personalizado', state.plusMessage.trim()) : '') : '';
+  const plusLines = state.plus ? line('Paquete Plus', `${plus?.name || 'Paquete Plus'} (+${money((plus?.price || 0) * extraQty('plus'))} MXN)`) + line('Cuadro con fotografía y marco', 'Incluido') + line('Color del marco incluido', state.frame) + line('Vinilo premium de la urna', state.color) + (state.plusMessage.trim() ? line('Mensaje personalizado', state.plusMessage.trim()) : '') : '';
   const vinylLines = extraQty('vinilo-personalizado') > 0 ? line('Complemento extra', `${vinyl?.name || 'Personalización de vinil'} (+${money((vinyl?.price || 100) * extraQty('vinilo-personalizado'))} MXN)`) + line('Color del vinilo del complemento', state.vinylExtraColor) : '';
   const otherExtras = INV.extras().filter(x => !['plus','vinilo-personalizado'].includes(x.id) && extraQty(x.id) > 0).map(x => line('Complemento', `${extraQty(x.id)}x ${x.name} (+${money(extraQty(x.id) * x.price)} MXN)`)).join('');
   $('summaryBox').innerHTML = `<div class="summary-box"><h4>Resumen de tu solicitud</h4>${line('Servicio', isCom() ? 'Cremación Comunitaria' : 'Cremación Individual')}${line('Mascota', val('petName'))}${line('Especie / raza', speciesLabel() + (state.breed ? ' / ' + state.breed : ''))}${line('Color', petColorLabel())}${line('Tamaño / peso', SIZE_LABEL[state.weight] || '—')}${isCom() ? '' : line('Urna', urn?.name || '—')}${plusLines}${vinylLines}${otherExtras}${line('Propietario', val('ownerName'))}${line('Teléfono', val('ownerPhone'))}${line('Dirección', val('ownerAddress'))}${workerMode ? line('Pago', paymentLabel()) + line('Saldo pendiente', money(paymentInfo().balance) + ' MXN') : ''}<div class="summary-total"><span>Total estimado</span><span>${money(total())} MXN</span></div></div>`;
@@ -483,6 +491,7 @@ $('sendClientWa').onclick = () => {
   generateCertificate();
 };
 $('downloadCertificate').onclick = generateCertificate;
+$('downloadRemision').onclick = downloadRemisionPdf;
 
 /* ---------- Certificado de cremación (canvas → PDF) ---------- */
 let certCanvas = null;
@@ -527,6 +536,78 @@ async function generateCertificate() {
   } finally { ok.disabled = false; }
 }
 function safe(s) { return String(s).replace(/[\/:*?"<>|]+/g, '-').replace(/\s+/g, '-').replace(/^-|-$/g, '') || 'Cremacion-Nextli'; }
+async function downloadRemisionPdf() {
+  if (!workerMode) { alert('La nota de remisión la genera el equipo NEXTLI.'); return; }
+  if (!requiredOk()) { alert('Completa primero todos los datos obligatorios.'); return; }
+  const canvas = document.createElement('canvas');
+  canvas.width = 1600; canvas.height = 1237;
+  const ctx = canvas.getContext('2d');
+  const ink = '#17263a', muted = '#687386', gold = '#b8944d', paper = '#fbf8f0';
+  ctx.fillStyle = paper; ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle = ink; ctx.font = 'bold 54px Georgia'; ctx.fillText('NEXTLI', 90, 105);
+  ctx.font = '24px Arial'; ctx.fillStyle = muted; ctx.fillText('SERVICIOS FUNERARIOS · ACOMPAÑAMIENTO CON AMOR', 92, 145);
+  ctx.textAlign = 'right'; ctx.font = 'bold 42px Georgia'; ctx.fillStyle = ink; ctx.fillText('NOTA DE REMISIÓN', 1510, 105);
+  ctx.font = '22px Arial'; ctx.fillStyle = muted; ctx.fillText(nowStamp(), 1510, 145); ctx.textAlign = 'left';
+  ctx.fillStyle = gold; ctx.fillRect(90,180,1420,4);
+  ctx.font = 'bold 25px Arial'; ctx.fillStyle = ink; ctx.fillText('DATOS DEL SERVICIO', 90, 238);
+  ctx.font = '22px Arial'; ctx.fillStyle = muted;
+  ctx.fillText('Mascota: ' + val('petName'), 90, 286);
+  ctx.fillText('Especie / raza: ' + speciesLabel() + (state.breed ? ' / ' + state.breed : ''), 90, 326);
+  ctx.fillText('Servicio: ' + (isCom() ? 'Cremación comunitaria' : 'Cremación individual'), 90, 366);
+  ctx.fillText('Tamaño / peso: ' + (SIZE_LABEL[state.weight] || '—'), 90, 406);
+  ctx.fillText('Propietario: ' + val('ownerName'), 850, 286);
+  ctx.fillText('Teléfono: ' + val('ownerPhone'), 850, 326);
+  ctx.fillText('Dirección: ' + val('ownerAddress'), 850, 366);
+  ctx.fillText('Fecha de defunción: ' + fmtDate(), 850, 406);
+  ctx.fillStyle = gold; ctx.fillRect(90,445,1420,2);
+  ctx.font = 'bold 25px Arial'; ctx.fillStyle = ink; ctx.fillText('CONCEPTOS Y PERSONALIZACIÓN', 90, 500);
+  let y = 552;
+  const drawRow = (label, amount, sub=false) => {
+    ctx.font = sub ? '19px Arial' : 'bold 22px Arial';
+    ctx.fillStyle = sub ? muted : ink;
+    ctx.fillText(label, sub ? 125 : 90, y);
+    if (amount) { ctx.textAlign='right'; ctx.fillText(amount,1510,y); ctx.textAlign='left'; }
+    y += sub ? 34 : 46;
+  };
+  if (isCom()) drawRow('Cremación comunitaria', money(calcBase()) + ' MXN');
+  else {
+    const urn = getUrn(state.urnId);
+    drawRow(urn?.name || 'Urna seleccionada', money(calcBase()) + ' MXN');
+  }
+  if (state.plus) {
+    const plus = getExtra('plus');
+    drawRow('Paquete Plus — cuadro y urna personalizada', money((plus?.price || 0) * extraQty('plus')) + ' MXN');
+    drawRow('Cuadro con fotografía y marco: incluido', '');
+    drawRow('Color del marco incluido: ' + state.frame, '', true);
+    drawRow('Color del vinilo premium de la urna: ' + state.color, '', true);
+    if (state.plusMessage.trim()) drawRow('Mensaje para la mascota: ' + state.plusMessage.trim(), '', true);
+  }
+  INV.extras().filter(x => !['plus','vinilo-personalizado'].includes(x.id) && extraQty(x.id)>0).forEach(x => drawRow(extraQty(x.id) + ' × ' + x.name, money(extraQty(x.id)*x.price) + ' MXN'));
+  if (extraQty('vinilo-personalizado') > 0) {
+    const vinyl = getExtra('vinilo-personalizado');
+    drawRow('Complemento: Personalización de vinil', money((vinyl?.price || 100)*extraQty('vinilo-personalizado')) + ' MXN');
+    drawRow('Color del vinilo del complemento: ' + state.vinylExtraColor, '', true);
+  }
+  ctx.fillStyle = gold; ctx.fillRect(90,Math.min(y+12,1050),1420,3);
+  const totalY = Math.min(y+72,1110);
+  ctx.font = 'bold 32px Arial'; ctx.fillStyle = ink; ctx.fillText('TOTAL', 90, totalY);
+  ctx.textAlign='right'; ctx.fillText(money(total()) + ' MXN',1510,totalY); ctx.textAlign='left';
+  const p = paymentInfo();
+  ctx.font = '20px Arial'; ctx.fillStyle = muted;
+  ctx.fillText('Pago: ' + p.label + ' · Abonado: ' + money(p.paid) + ' · Saldo: ' + money(p.balance) + ' MXN',90,Math.min(totalY+54,1180));
+  ctx.font = 'italic 20px Georgia'; ctx.fillStyle = muted;
+  ctx.fillText('Gracias por permitirnos honrar la vida de tu compañero. Estamos contigo.',90,1205);
+  const btn = $('downloadRemision'); btn.disabled = true;
+  try {
+    const blob = await CERT.toPdfBlob(canvas, 'Nota de remision NEXTLI');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = 'Nota-Remision-' + safe(val('petName')) + '-' + safe(val('ownerName')) + '.pdf';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 15000);
+  } catch (e) { console.error(e); alert('No se pudo generar la nota de remisión. Inténtalo de nuevo.'); }
+  finally { btn.disabled = false; }
+}
+
 async function downloadCertificatePdf() {
   if (!workerMode) { alert('El certificado lo genera el equipo NEXTLI.'); return; }
   if (!certCanvas) return;
