@@ -638,8 +638,8 @@ async function sendRemisionToClient(){
     if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]}))await navigator.share({files:[file],title:'Nota de remisión NEXTLI',text:textMessage});
     else{
       const url='https://wa.me/'+phone+'?text='+encodeURIComponent(textMessage+'\n\nTe comparto la nota de remisión en PDF. Adjuntaré el archivo en este chat.');
-      window.open(url,'_blank','noopener,noreferrer');const blobUrl=URL.createObjectURL(file),a=document.createElement('a');a.href=blobUrl;a.download=file.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(blobUrl),60000);
-      alert('Se abrió el chat del cliente y se descargó el PDF. Adjunta el archivo descargado en WhatsApp para enviarlo.');
+      const blobUrl=URL.createObjectURL(file),a=document.createElement('a');a.href=blobUrl;a.download=file.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(blobUrl),60000);window.location.href=url;
+      alert('Se descargó el PDF y se abrió el chat del cliente. Adjunta el archivo descargado en WhatsApp para enviarlo.');
     }
   }catch(e){if(e&&e.name!=='AbortError'){console.error(e);alert('No se pudo compartir la nota PDF. Puedes descargarla y adjuntarla manualmente.');}}
   finally{btn.disabled=false;}
